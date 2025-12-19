@@ -2,30 +2,6 @@
 
 public static class Utils
 {
-    public static string GetFullPath(string dataFolder)
-    {
-        var availablePaths = new string[]
-        {
-            Path.Combine("..", dataFolder),
-            Path.Combine("..", "..", dataFolder),
-            Path.Combine("..", "..", "..", "..", dataFolder),
-            Path.Combine("..", "..", "..", "..", "..", dataFolder),
-            Path.Combine(""),
-            Path.Combine(dataFolder),
-        };
-
-        foreach (var path in availablePaths)
-        {
-            var fullPath = Path.GetFullPath(path);
-            if (Directory.Exists(fullPath))
-            {
-                return fullPath;
-            }
-        }
-
-        return "";
-    }
-    
     public static object ReadCustomSize(byte[] data, int byteOffset, int sizeInBytes, bool isSigned)
     {
         if (isSigned)

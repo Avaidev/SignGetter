@@ -1,143 +1,176 @@
-﻿using HidSharp;
+﻿using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
+using System.Windows;
+using System.Windows.Interop;
+using DataLayer;
+using HidSharp;
 using TabletLib.Models;
 using TabletLib.Models.Profile;
-using TabletLib.Utilities;
+using DeviceFilter = TabletLib.Utilities.DeviceFilter;
+// ReSharper disable All
 
 namespace TabletLib.Services;
 
 public class TabletManager : IDisposable
 {
-    private TabletProfile? _tabletProfile;
-    private HidDevice? _hidDevice;
-    private HidStream? _hidStream;
-    private CancellationTokenSource? _cancellationTokenSource;
-    private bool _isRunning = false;
-    private bool _disposed = false;
+   public enum TabletStatus
+   {
+      NotSelected,
+      NotRegistered,
+      Captured,
+      ReSelected
+   }
+
+   private DevicePreview? _selectedTablet;
+   private HwndSource? _hwndSource;
+   private IntPtr _targetTablet = IntPtr.Zero;
+   private IntPtr _targetWindow;
+   private TabletStatus _currentStatus = TabletStatus.NotSelected;
+   private bool _disposed = false;
+   private bool _hooked = false;
+
+   private TabletProfile? _tabletProfile; //TODO Rebuild Profiles
+   
+   public TabletStatus CurrentStatus => _currentStatus;
+   public string TabletName => _selectedTablet?.Name ?? "Unknown";
+   public string TabletManufacturer => _selectedTablet?.Manufacturer ?? "Unknown";
+   
+   
+
+   #region Events
+   public event Action<TabletStatus>? OnStatusChanged;
+   public event Action<TabletData>? OnDataReceived;
+   public event Action<string>? OnErrorMessage;
+   public event Action<string>? OnWarningMessage;
+   #endregion
+   
+   #region Initializing
+   public TabletManager(Window window)
+   {
+      _targetWindow = new WindowInteropHelper(window).Handle;
+      if (_targetWindow == IntPtr.Zero)
+      {
+         window.SourceInitialized += OnWindowInit;
+      }
+      else SetHook();
+   }
+
+   public TabletManager(Window window, Action<TabletData> callback) : this(window)
+   {
+      OnDataReceived += callback;
+   }
+
+   private void OnWindowInit(object? sender, EventArgs e)
+   {
+      if (sender is Window window)
+      {
+         window.SourceInitialized -= OnWindowInit;
+         _targetWindow = new WindowInteropHelper(window).Handle;
+         SetHook();
+      }
+   }
+
+   private void SetHook()
+   {
+      if (_targetWindow == IntPtr.Zero) throw new InvalidOperationException("[TabletManager] Window is not available");
+      _hwndSource = HwndSource.FromHwnd(_targetWindow);
+      
+      if (_hwndSource == null) throw new InvalidOperationException("[TabletManager] Invalid getting HWND from window");
+      
+      _hwndSource.AddHook(WindowHookProcess);
+      _hooked = true;
+   }
+   #endregion
+
+   #region Tablet Lifetime Process
+   private IntPtr WindowHookProcess(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+   {
+      if (msg != RawInputHelper.WM_INPUT) return IntPtr.Zero; // TODO Always true
+      
+      if (_currentStatus == TabletStatus.ReSelected)
+      {
+         _targetTablet = IntPtr.Zero;
+         _currentStatus = TabletStatus.Captured;
+      }
+      var rawInput = GetRawInput(lParam);
+      if (rawInput is null 
+          || !rawInput.Value.header.IsHid // TODO Always true
+          || !IsTargetDevice(rawInput.Value.header.hDevice)) return IntPtr.Zero; // TODO Always true
+      handled = ProcessHid(rawInput.Value.hid);
+      return IntPtr.Zero;
+   }
+
+   private bool IsTargetDevice(IntPtr hDevice)
+   {
+      if (_targetTablet != IntPtr.Zero) return hDevice == _targetTablet;
+      
+      var path = DeviceFilter.GetDevicePath(hDevice);
+      if (path is null) return false;
+      
+      var ids = DeviceFilter.GetIdsFromPath(path);
+      if (ids is null) return false;
+
+      if (_selectedTablet?.VendorID == ids.Value.Item1 && _selectedTablet?.ProductID == ids.Value.Item2 &&
+          _selectedTablet?.InstanceGuid == ids.Value.Item3)
+      {
+         _targetTablet = hDevice;
+         return true;
+      }
+      return false;
+   }
+
+   private bool ProcessHid(RawInputHelper.RAWHID hid)
+   {
+      int totalBytes = (int)(hid.dwSizeHid * hid.dwCount);
+      byte[] data = new byte[totalBytes];
     
-    public bool TabletIsLoaded = false;
-    public bool TabletIsConnected = false;
-    public string TabletDeviceName => _tabletProfile?.DeviceName ?? "Unknown";
-    public string TabletManufacturer => _tabletProfile?.Manufacturer ?? "Unknown";
-    
-    private event Action<TabletData>? OnDataReceived;
-    private event Action<string>? OnWarningMessage;
-    private event Action<string>? OnErrorMessage;
-    
-    public TabletManager(){}
+      Marshal.Copy(hid.bRawData, data, 0, totalBytes);
 
-    public TabletManager(Action<TabletData> onDataCallback)
-    {
-        OnDataReceived += onDataCallback;
-    }
-    
-    public void SetOnDataReceivedCallback(Action<TabletData> onDataCallback){ OnDataReceived += onDataCallback; }
-    public void SetOnWarningMessageCallback(Action<string> callback) {OnWarningMessage += callback;}
-    public void SetOnErrorMessageCallback(Action<string> callback) {OnErrorMessage += callback;}
+      var tabletData = ParseData(data);
+      if (tabletData is null) return false;
+      
+      OnDataReceived?.Invoke(ParseData(data)!);
+      return true;
+   }
 
-    public bool Start()
-    {
-        if (_isRunning) return false;
+   private static RawInputHelper.RAWINPUT? GetRawInput(IntPtr lParam)
+   {
+      uint dataSize = 0;
+      uint headerSize = (uint)Marshal.SizeOf(typeof(RawInputHelper.RAWINPUTHEADER));
+      
+      uint result = RawInputHelper.GetRawInputData(lParam, RawInputHelper.RID_INPUT, IntPtr.Zero, ref dataSize, headerSize);
 
-        if (!DetectTablet())
-        {
-            TabletIsLoaded = false;
-            TabletIsConnected = false;
-            OnErrorMessage?.Invoke("Failed to load tablet. Check connection");
-            return false;
-        }
-        
-        TabletIsConnected = true;
+      if (result == 0 && dataSize == 0)
+      {
+         int error = Marshal.GetLastWin32Error();
+         Console.WriteLine("[TabletManager] Failed to read input size: {0}", error);
+         return null;
+      }
+      
+      IntPtr buffer = Marshal.AllocHGlobal((int)dataSize);
+      try
+      {
+         result = RawInputHelper.GetRawInputData(lParam, RawInputHelper.RID_INPUT, buffer, ref dataSize, headerSize);
 
-        if (!LoadProfile())
-        {
-            TabletIsLoaded = false;
-            OnErrorMessage?.Invoke("Failed to load tablet profile");
-            return false;
-        }
+         if (result == 0 && dataSize == 0)
+         {
+            int error = Marshal.GetLastWin32Error();
+            Console.WriteLine("[TabletManager] Failed to read input data: {0}", error);
+            return null;
+         }
+         
+         return Marshal.PtrToStructure<RawInputHelper.RAWINPUT>(buffer);
+         
+      }
+      finally
+      {
+         Marshal.FreeHGlobal(buffer);
+      }
+   }
 
-        TabletIsLoaded = true;
-        _isRunning = true;
-        _cancellationTokenSource = new CancellationTokenSource();
-        
-        Task.Factory.StartNew(async () => await RunTabletLoop(_cancellationTokenSource.Token), _cancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-        return true;
-    }
-
-    public void Stop()
-    {
-        _isRunning = false;
-        _cancellationTokenSource?.Cancel();
-    }
-
-    private async Task RunTabletLoop(CancellationToken token)
-    {
-        while (!token.IsCancellationRequested)
-        {
-            try
-            {
-                if (_hidStream == null && !TryOpenTabletStream())
-                {
-                    await Task.Delay(1000, token);
-                    continue;
-                }
-
-                await ReadTabletData(token);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                OnErrorMessage?.Invoke(ex.Message);
-                await Task.Delay(1000, token);
-            }
-        }
-    }
-
-    private async Task ReadTabletData(CancellationToken token)
-    {
-        if (_tabletProfile == null ||
-            _hidDevice == null ||
-            _hidStream == null ||
-            token.IsCancellationRequested) return;
-
-        byte[] buffer = new byte[_hidDevice.GetMaxInputReportLength()];
-        while (!token.IsCancellationRequested)
-        {
-            try
-            {
-                int bytesRead = await _hidStream.ReadAsync(buffer, token);
-
-                if (bytesRead > 0)
-                {
-                    var tabletData = ParseData(buffer);
-                    if (tabletData != null)
-                    {
-                        OnDataReceived?.Invoke(tabletData);
-                    }
-                }
-            }
-            catch(Exception ex) when (ex is IOException or OperationCanceledException)
-            {
-                break;
-            }
-            catch (TimeoutException)
-            {
-                continue;
-            }
-            
-            catch (Exception ex)
-            {
-                OnWarningMessage?.Invoke(ex.Message);
-                await Task.Delay(1000, token);
-            }
-        }
-    }
-
-    private TabletData? ParseData(byte[] data)
-    {
-        if (_tabletProfile == null) return null;
+   private TabletData? ParseData(byte[] data)
+   {
+      if (_tabletProfile == null) return null;
         var tabletData = new TabletData();
         
         // Parse Status
@@ -169,26 +202,29 @@ public class TabletManager : IDisposable
                 _tabletProfile.Data.ByteOffsets.TiltX,
                 _tabletProfile.Data.ValueRanges.MaxTilt) ?? throw new Exception("Wrong Type for TiltX value");
         }
-        
+        else tabletData.TiltX = 0;
+
         if (_tabletProfile.Data.ByteOffsets.TiltY.ByteOffset != -1)
         {
             tabletData.TiltY = ParseValue<sbyte>(
                 _tabletProfile.Data.ByteOffsets.TiltY,
                 _tabletProfile.Data.ValueRanges.MaxTilt) ?? throw new Exception("Wrong Type for TiltY value");
         }
-        
+        else tabletData.TiltY = 0;
+
         if (_tabletProfile.Data.ByteOffsets.Wheel.ByteOffset != -1)
         {
             tabletData.TiltX = ParseValue<sbyte>(
                 _tabletProfile.Data.ByteOffsets.Wheel,
                 1) ?? throw new Exception("Wrong Type for Wheel value");
         }
+        else tabletData.Wheel = 0;
         
         return tabletData;
 
         T? ParseValue<T>(FieldInfo field, int maxValue) where T : struct
         {
-            var value = Utils.ReadBytes(
+            var value = Utilities.Utils.ReadBytes(
                 data,
                 field.ByteOffset,
                 field.BitSize,
@@ -201,78 +237,164 @@ public class TabletManager : IDisposable
                 _ => null
             };
         }
-    }
+   } //TODO Rebuild
+   private bool RegisterTablet()
+   {
+      if (_currentStatus != TabletStatus.NotRegistered)
+      {
+         Console.WriteLine("[TabletManager] Cant register tablet, unregister first");
+         return false;
+      }
+      RawInputHelper.RAWINPUTDEVICE device = new RawInputHelper.RAWINPUTDEVICE
+      {
+         usUsagePage = RawInputHelper.HID_USAGE_PAGE_DIGITIZER,
+         usUsage = RawInputHelper.HID_USAGE_DIGITIZER,
+         dwFlags = RawInputHelper.RIDEV_INPUTSINK,
+         hwndTarget = _targetWindow
+      };
 
-    private bool TryOpenTabletStream()
-    {
-        if(_hidDevice == null) return false;
-        if(_hidStream != null) return true;
+      if (!RawInputHelper.RegisterRawInputDevices([device], 1, (uint)Marshal.SizeOf(typeof(RawInputHelper.RAWINPUTDEVICE)))) return false;
+      _currentStatus = TabletStatus.Captured;
+      return true;
+   }
 
-        if (!_hidDevice.TryOpen(out _hidStream))
-        {
-            OnErrorMessage?.Invoke("Failed to open tablet stream");
-            return false;
-        }
+   private void UnregisterTablet()
+   {
+      if (_currentStatus is not (TabletStatus.Captured or TabletStatus.ReSelected)) return;
+      RawInputHelper.RAWINPUTDEVICE device = new RawInputHelper.RAWINPUTDEVICE
+      {
+         usUsagePage = RawInputHelper.HID_USAGE_PAGE_DIGITIZER,
+         usUsage = RawInputHelper.HID_USAGE_DIGITIZER,
+         dwFlags = RawInputHelper.RIDEV_REMOVE,
+         hwndTarget = IntPtr.Zero
+      };
 
-        _hidStream.ReadTimeout = Timeout.Infinite;
+      RawInputHelper.RegisterRawInputDevices([device], 1, 28);
+      _currentStatus = TabletStatus.NotRegistered;
+   }
+   #endregion
 
-        return true;
-    }
+   #region Preparing
+   public static List<DevicePreview> GetHidDevices()
+   {
+      var hidDevices = DeviceList.Local.GetHidDevices().Where(IsSimilarToTablet);
+      return hidDevices.Select(d =>
+      {
+         var path = d.DevicePath;
+         return new DevicePreview(d.GetProductName(), d.GetManufacturer(), d.VendorID, d.ProductID,
+            Guid.Parse(Regex.Match(path, @"{(.+)}").Groups[1].Value));
+      }).ToList();
+   }
+   private static bool IsSimilarToTablet(HidDevice device)
+   {
+      bool isDigitizer = device.GetReportDescriptor() != null 
+                         && device.GetReportDescriptor().DeviceItems.SelectMany(item => item.Usages.GetAllValues()).Any(usage => (ushort)(usage >> 16) == 0x0D);
 
-    private bool DetectTablet()
-    {
-        var deviceList = DeviceList.Local;
-        var hidDevices = deviceList.GetHidDevices().ToList();
-
-        if (hidDevices.Count == 0) return false;
+      if (!isDigitizer) return false;
         
-        foreach (var device in hidDevices.Where(IsSimilarToTablet))
-        {
-            _hidDevice = device;
-            return true;
-        }
+      string[] internalKeywords = 
+      {
+         "HIDI2C", "TouchPad", "Touchpad", "Synaptics", "ELAN", 
+         "Precision Touchpad", "Touchscreen", "TrackPad", "Trackpad",
+         "I2C", "HID Compliant Mouse", "PS/2", "USB Input Device"
+      };
 
-        var profiles = ProfileManager.GetAllProfiles();
-        if (profiles is null ||  profiles.Count == 0) return false;
+      foreach (var keyword in internalKeywords)
+      {
+         if (device.GetProductName().Contains(keyword, StringComparison.OrdinalIgnoreCase)) return false;
+      }
+      return true;
+   }
+   
+   public bool SelectTablet(DevicePreview? tablet = null)
+   {
+      var hidDevices = GetHidDevices();
+      var selected = tablet != null ? SelectManually(hidDevices, tablet) : SelectAuto(hidDevices);
+      if (!selected) return false;
 
-        foreach (var device in profiles.Select(profile => hidDevices.FirstOrDefault(d => d.VendorID == profile.VendorId && d.ProductID == profile.ProductId)).OfType<HidDevice>())
-        {
-            _hidDevice = device;
-            return true;
-        }
+      _currentStatus = _currentStatus is TabletStatus.NotSelected ? TabletStatus.NotRegistered : TabletStatus.ReSelected;
+      return true;
+   }
+   private bool SelectManually(List<DevicePreview> hidDevices, DevicePreview tablet)
+   {
+      _selectedTablet =
+         hidDevices.FirstOrDefault(d => d.InstanceGuid == tablet.InstanceGuid);
+      if (_selectedTablet == null) return false;
+      
+      AppConfigManager.AppSettings.LastDeviceVID = _selectedTablet.VendorID;
+      AppConfigManager.AppSettings.LastDevicePID = _selectedTablet.ProductID;
+      AppConfigManager.AppSettings.LastDeviceName = _selectedTablet.Name;
+      AppConfigManager.SaveAppSettings();
+      return true;
+   }
+
+   private bool SelectAuto(List<DevicePreview> hidDevices)
+   {
+      var appSettings = AppConfigManager.AppSettings;
+      if (appSettings.LastDeviceVID == 0 || appSettings.LastDevicePID == 0) return false;
         
-        return false;
-    }
-    
-    private bool IsSimilarToTablet(HidDevice device)
-    {
-        var descriptor = device.GetReportDescriptor();
-        if (descriptor != null)
-        {
-            return descriptor.DeviceItems.SelectMany(item => item.Usages.GetAllValues()).Any(usage => (ushort)(usage >> 16) == 0x0D);
-        }
-            
-        return false;
-    }
+      _selectedTablet = hidDevices.FirstOrDefault(d => d.VendorID != appSettings.LastDeviceVID || d.ProductID != appSettings.LastDevicePID || d.Name.Contains(appSettings.LastDeviceName, StringComparison.OrdinalIgnoreCase));
+      return _selectedTablet != null;
+   }
+   
+   private bool LoadProfile() //TODO remove
+   {
+      if (_selectedTablet == null) return false;
+      var profile = ProfileManager.GetProfile(_selectedTablet);
+      if (profile != null)
+      {
+         _tabletProfile = profile;
+         return true;
+      }
+      // profile = ProfileManager.GenerateProfile(device);
+      // _tabletProfile = profile;
+      return true;
+   }
+   #endregion
 
-    private bool LoadProfile()
-    {
-        if (_hidDevice == null) return false;
-        var profile = ProfileManager.GetProfile(_hidDevice);
-        if (profile != null)
-        {
-            _tabletProfile = profile;
-            return true;
-        }
-        profile = ProfileManager.GenerateProfile(_hidDevice);
-        _tabletProfile = profile;
-        return true;
-    }
-    
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _cancellationTokenSource?.Dispose();
-        _disposed = true;
-    }
+   public async Task<bool> StartAsync()
+   {
+      if (_selectedTablet == null)
+      {
+         OnErrorMessage?.Invoke("Select the tablet first");
+         return false;
+      }
+
+      if (!LoadProfile()) //TODO Remove
+      {
+         OnErrorMessage?.Invoke("Profile load failed");
+         return false;
+      }
+
+      while (_targetWindow == IntPtr.Zero)
+      {
+         await Task.Delay(500);
+      }
+
+      if (!RegisterTablet())
+      {
+         OnErrorMessage?.Invoke("Register tablet failed");
+         return false;
+      }
+
+      return true;
+   }
+
+   public void Stop()
+   {
+      UnregisterTablet();
+   }
+
+   public void Dispose()
+   {
+      if (_disposed) return;
+      _disposed = true;
+      if (_hooked && _hwndSource != null)
+      {
+         _hwndSource.RemoveHook(WindowHookProcess);
+         _hwndSource.Dispose();
+         _hooked = false;
+      }
+      UnregisterTablet();
+   }
 }

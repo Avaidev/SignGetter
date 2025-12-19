@@ -1,15 +1,29 @@
 ﻿using System.Text.Json;
+using DataLayer;
 using HidSharp;
 using HidSharp.Reports;
 using TabletLib.Models;
 using TabletLib.Models.Profile;
 using TabletLib.Utilities;
+using DataUtils = DataLayer.Utils;
 
 namespace TabletLib.Services;
 
 internal static class ProfileManager
 {
     public static string ProfilesFileName = "profiles.json";
+    
+    public enum FieldType
+    {
+        Coordinate,
+        Pressure,
+        Constant,
+        PushButton,
+        ToggleButton,
+        OneShot,
+        SignedValue,
+        Unknown
+    }
     
     #region Generating Profile
     public static TabletProfile GenerateProfile(HidDevice device)
@@ -50,7 +64,7 @@ internal static class ProfileManager
 
     private static DataItemAnalysis AnalyzeDataItem(IEnumerable<DataItem> dataItems)
     {
-        var analysis = new  DataItemAnalysis();
+        var analysis = new DataItemAnalysis();
         var bitPosition = 0;
 
         foreach (var dataItem in dataItems)
@@ -77,7 +91,7 @@ internal static class ProfileManager
                 case FieldType.Pressure:
                     analysis.PressureFields.Add(itemInfo);
                     break;
-                case FieldType.SignedValue:
+                case FieldType.ToggleButton:
                 case FieldType.PushButton:
                     analysis.ButtonFields.Add(itemInfo);
                     break;
@@ -204,16 +218,10 @@ internal static class ProfileManager
 
     public static IList<TabletProfile>? GetAllProfiles()
     {
-        var fullPath = Utils.GetFullPath("Data");
-        var filePath = Path.Combine(fullPath, ProfilesFileName);
-        if (string.IsNullOrEmpty(fullPath)
-            || !File.Exists(filePath)) return null;
-
         List<TabletProfile>? profiles;
         try
         {
-            var json = File.ReadAllText(filePath);
-            profiles = JsonSerializer.Deserialize<List<TabletProfile>>(json) ?? new();
+            profiles = JsonService.LoadFromJson<List<TabletProfile>>(ProfilesFileName) ?? new();
             Console.WriteLine("[ProfileManager] Loaded profiles: {0}",  profiles.Count);
         }
         catch (Exception ex)
@@ -227,16 +235,9 @@ internal static class ProfileManager
 
     private static bool SaveAllProfiles(List<TabletProfile> profiles)
     {
-        var fullPath = Utils.GetFullPath("Data");
-        var filePath = Path.Combine(fullPath, ProfilesFileName);
-        if (string.IsNullOrEmpty(fullPath)
-            || !File.Exists(filePath)) return false;
-
         try
         {
-            var json = JsonSerializer.Serialize(profiles);
-            File.WriteAllText(filePath, json);
-            return true;
+            return JsonService.SaveToJson(profiles, ProfilesFileName);
         }
         catch (Exception ex)
         {
@@ -245,7 +246,7 @@ internal static class ProfileManager
         }
     }
     
-    public static TabletProfile? GetProfile(HidDevice device)
+    public static TabletProfile? GetProfile(DevicePreview device)
     {
         var profiles = GetAllProfiles();
         return profiles?.FirstOrDefault(p => p.VendorId == device.VendorID && p.ProductId == device.ProductID);
