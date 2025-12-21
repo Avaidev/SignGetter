@@ -1,16 +1,13 @@
 ﻿namespace TabletLib.Models;
 
-public class TabletData
+public struct TabletData
 {
-    public byte X { get; set; }
-    public byte Y { get; set; }
-    public sbyte TiltX { get; set; }
-    public sbyte TiltY { get; set; }
-    public sbyte Wheel { get; set;}
-    public ushort Pressure { get; set; }
-    public bool IsPenDown { get; set; }
-    public bool InRange { get; set; }
-    public bool IsEraser { get; set; }
-    public bool Button1 { get; set; }
-    public bool Button2 { get; set; }
+    public float X;
+    public float Y;
+    public bool TipPressed;
+    public bool TipUnPressed;
+    public bool Button1Pressed;
+    public bool Button1UnPressed;
+    public bool Button2Pressed;
+    public bool Button2UnPressed;
 }

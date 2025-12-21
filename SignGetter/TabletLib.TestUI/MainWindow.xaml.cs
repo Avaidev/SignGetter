@@ -1,14 +1,7 @@
-﻿using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
+﻿using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using TabletLib.Services;
+
 
 namespace TabletLib.TestUI;
 
@@ -17,83 +10,130 @@ namespace TabletLib.TestUI;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private TabletManager? _tabletManager;
+    private CancellationTokenSource? _cts;
+
     public MainWindow()
     {
         InitializeComponent();
-
-        _ = Test();
+        this.Loaded += OnLoaded;
+        this.Closed += OnClosed;
     }
-
-    private async Task Test()
+    
+    private async void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        var tabletManager = new TabletManager(this, (data =>
+        _cts = new CancellationTokenSource();
+
+        var tipStatus = false;
+        var btn1Status = false;
+        var btn2Status = false;
+    
+        _tabletManager = new TabletManager(this, data =>
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            try
             {
+                if (data.TipPressed) tipStatus = true;
+                if (data.TipUnPressed) tipStatus = false;
+                
+                if (data.Button1Pressed) btn1Status = true;
+                if (data.Button1UnPressed) btn1Status = false;
+                
+                if (data.Button2Pressed) btn2Status = true;
+                if (data.Button2UnPressed) btn2Status = false;
+                
                 Console.WriteLine("= Report Received =");
-                // Console.WriteLine($"- X coordinates: {data.X}");
-                // Console.WriteLine($"- Y coordinates: {data.Y}");
-                // Console.WriteLine($"- Pressure value: {data.Pressure}");
-                // Console.WriteLine($"- TiltX value: {data.TiltX}");
-                // Console.WriteLine($"- TiltY value: {data.TiltY}");
-                // Console.WriteLine($"- Wheel value: {data.Wheel}");
-                // Console.WriteLine($"- Pen is Down: {data.IsPenDown}");
-                // Console.WriteLine($"- Eraser: {data.IsEraser}");
-                // Console.WriteLine($"- Pen in Range: {data.InRange}");
-                // Console.WriteLine($"- Button 1 pressed: {data.Button1}");
-                // Console.WriteLine($"- Button 2 pressed: {data.Button2}");
+                Console.WriteLine($"- X coordinates: {data.X}");
+                Console.WriteLine($"- Y coordinates: {data.Y}");
+                Console.WriteLine($"- Tip Pressed: {tipStatus}");
+                Console.WriteLine($"- Btn 1: {btn1Status}");
+                Console.WriteLine($"- Btn 2: {btn2Status}");
                 Console.WriteLine("= End of Report =\n");
-            });
-        }));
-        tabletManager.OnErrorMessage += (message => {Console.WriteLine($"[Error] {message}");});
-        tabletManager.OnWarningMessage += (message => {Console.WriteLine($"[Warning] {message}");});
-        Console.WriteLine("First selection: " + tabletManager.SelectTablet());
-        var deviceList = TabletManager.GetHidDevices();
-        
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Callback Error] {ex}");
+            }
+        });
+    
+        _tabletManager.OnErrorMessage += message => Console.WriteLine($"[Error] {message}");
+        _tabletManager.OnWarningMessage += message => Console.WriteLine($"[Warning] {message}");
+    
+        Console.WriteLine("First selection: " + _tabletManager.SelectTablet());
+    
+        var deviceList = TabletManager.GetDevices();
         if (deviceList.Count > 0)
         {
-            var i = 0;
-            foreach (var device in deviceList)
-            {
-                Console.WriteLine($"[{i++}] - {device}");
-            }
-            // Console.Write("Choose device index: ");
-            // var input = Console.ReadLine();
-            // if (!int.TryParse(input, out int index))
-            // {
-            //     Console.WriteLine("Wrong index");
-            //     return;
-            // }
+            for (int i = 0; i < deviceList.Count; i++)
+                Console.WriteLine($"[{i}] - {deviceList[i]}");
+    
+            // choose a device here if needed:
             // var selected = deviceList[index];
-            // Console.WriteLine("Second selection: " + tabletManager.SelectTablet(selected));
+            // Console.WriteLine("Second selection: " + _tabletManager.SelectTablet(selected));
         }
         else
         {
             Console.WriteLine("Device list is empty");
         }
         
-        Console.WriteLine("=== Starting of Test ===");
-        var started = await tabletManager.StartAsync();
+    
+        Console.WriteLine("=== Starting test ===");
+        bool started;
+        try
+        {
+            started = await _tabletManager.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Starting failed: {ex}");
+            return;
+        }
+    
         if (!started)
         {
             Console.WriteLine("Starting failed");
             return;
         }
-        
+    
         Console.WriteLine("= Tablet Info =");
-        Console.WriteLine($"- Tablet status: {tabletManager.CurrentStatus}");
-        Console.WriteLine($"- Device name: {tabletManager.TabletName}");
-        Console.WriteLine($"- Device manufacturer: {tabletManager.TabletManufacturer}");
+        Console.WriteLine($"- Tablet status: {_tabletManager.CurrentStatus}");
+        Console.WriteLine($"- Device name: {_tabletManager.TabletName}");
+        Console.WriteLine($"- Device manufacturer: {_tabletManager.TabletManufacturer}");
         Console.WriteLine("= End of Tablet Info =");
-        
-        while (true)
+    
+        // Periodic heartbeat without blocking cleanup
+        _ = Task.Run(async () =>
         {
-            await Task.Delay(1000);
+            while (!_cts!.IsCancellationRequested)
+            {
+                await Task.Delay(1000, _cts.Token);
+            }
+        });
+    }
+    
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _cts?.Cancel();
+
+        if (_tabletManager != null)
+        {
+            try
+            {
+                Console.WriteLine("=== Stopping test ===");
+                _tabletManager.Stop();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Stop error: {ex}");
+            }
+
+            try
+            {
+                _tabletManager.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Dispose error: {ex}");
+            }
         }
-        
-        Console.WriteLine("=== Stopping test ===");
-        tabletManager.Stop();
-        
-        tabletManager.Dispose();
     }
 }
