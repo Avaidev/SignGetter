@@ -1,27 +1,26 @@
 ﻿using HidSharp;
-using HidSharp.Reports;
 
-namespace TabletLib.Models;
+namespace TabletSignGetterLib.Models;
 
-public class HidDeviceInfo
+public class TabletDevice
 {
     public string DeviceName { get; private set; }
     public string Manufacturer { get; private set; }
-    public int VendorID { get; private set; }
-    public int ProductID { get; private set; }
+    public readonly int VendorId;
+    public readonly int ProductId;
 
     private int _logicalMaxX;
     private int _logicalMaxY;
 
-    public HidDeviceInfo(HidDevice device)
+    public TabletDevice(HidDevice device)
     {
         DeviceName = device.GetProductName();
         Manufacturer = device.GetManufacturer();
-        VendorID = device.VendorID;
-        ProductID = device.ProductID;
+        VendorId = device.VendorID;
+        ProductId = device.ProductID;
         DetermineMax(device.GetRawReportDescriptor());
     }
-
+    
     private void DetermineMax(byte[] descriptor)
     {
         var sizeX = GetReportSize(descriptor, 0x30);
@@ -83,23 +82,19 @@ public class HidDeviceInfo
     public int GetMaxX() => _logicalMaxX;
     public int GetMaxY() => _logicalMaxY;
     
-    public void ChangeMaxX(int newMaxX) => _logicalMaxX = newMaxX;
-    public void ChangeMaxY(int newMaxY) => _logicalMaxY = newMaxY;
-    
     public override string ToString()
     {
-        return $"{Manufacturer} - '{DeviceName}' (VID: {VendorID}, PID: {ProductID})";
+        return $"{Manufacturer} - '{DeviceName}' (VID: {VendorId}, PID: {ProductId})";
     }
 
     public override int GetHashCode()
     {
-        return VendorID.GetHashCode() ^ ProductID.GetHashCode();
+        return VendorId.GetHashCode() ^ ProductId.GetHashCode();
     }
-
+    
     public override bool Equals(object? obj)
     {
-        if (obj is null) return false;
-        var other = obj as HidDeviceInfo;
-        return other.VendorID == VendorID && other.ProductID == ProductID;
+        var other = obj as TabletDevice;
+        return other != null && other.VendorId == VendorId && other.ProductId == ProductId;
     }
 }

@@ -1,8 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using HidSharp;
 
-namespace TabletLib.Utilities;
+namespace TabletSignGetterLib.Utilities;
 
 public static class DeviceFilter
 {
@@ -40,8 +39,9 @@ public static class DeviceFilter
     public static (int?, int?) GetIdsFromPath(string? path)
     {
         if (path is null) return (null, null);
-        var regex = new Regex(@"vid_(\w+)&pid_(\w+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        var regex = new Regex(@"vid[&_]([A-Za-z0-9]+)[_&]pid[_&]([A-Za-z0-9]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         var match = regex.Match(path);
+        if (match.Groups.Count < 2) return (null, null);
         try
         {
             var vid = Convert.ToInt32(match.Groups[1].Value, 16);
@@ -50,7 +50,7 @@ public static class DeviceFilter
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Exception in converting path to Ids: {0}", ex.Message);
+            Console.WriteLine("[DeviceFilter] Exception in converting path to Ids: {0}", ex.Message);
             return (null, null);
         }
     }

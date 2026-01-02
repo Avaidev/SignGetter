@@ -1,4 +1,4 @@
-﻿namespace TabletLib.Models;
+﻿namespace TabletSignGetterLib.Models;
 
 public struct TabletData
 {

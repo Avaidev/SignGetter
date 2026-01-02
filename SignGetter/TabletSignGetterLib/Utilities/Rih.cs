@@ -1,8 +1,6 @@
-﻿using System.IO;
-using System.Runtime.InteropServices;
-using Microsoft.Win32.SafeHandles;
+﻿using System.Runtime.InteropServices;
 
-namespace TabletLib.Utilities;
+namespace TabletSignGetterLib.Utilities;
 
 public static class Rih //RawInputHelper
 {

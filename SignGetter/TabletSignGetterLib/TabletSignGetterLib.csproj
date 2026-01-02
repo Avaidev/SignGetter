@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>net9.0-windows</TargetFramework>
+        <LangVersion>13</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <UseWpf>true</UseWpf>
@@ -9,10 +10,7 @@
 
     <ItemGroup>
       <PackageReference Include="HidSharp" Version="2.6.4" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\DataLayer\DataLayer.csproj" />
+      <PackageReference Include="Microsoft.VisualBasic" Version="10.3.0" />
     </ItemGroup>
 
 </Project>
