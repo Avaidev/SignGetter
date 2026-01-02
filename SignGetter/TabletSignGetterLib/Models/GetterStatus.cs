@@ -15,4 +15,13 @@ public struct GetterStatus()
     public float MinY = float.MaxValue;
     public float MaxX = 0;
     public float MaxY = 0;
+    
+    public void Reset()
+    { 
+        StatusCode = (int)StatusCodes.Success;
+        MinX = float.MaxValue;
+        MinY = float.MaxValue;
+        MaxX = 0;
+        MaxY = 0;
+    }
 }

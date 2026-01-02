@@ -16,24 +16,27 @@ public static class GetterManager
     private static readonly ApplicationHost _appHost = new(WindowHookProcess);
     private static TabletDevice? _selectedTablet;
     private static GetterStatus _status = new();
+    private static GetterResult _result = new();
     private static IntPtr _targetHandler = IntPtr.Zero;
-    private static CancellationTokenSource _cts = new();
+    private static CancellationTokenSource? _cts;
     
-    private static IntPtr _resultPointer = IntPtr.Zero;
-    private static int _resultSize = 0;
-
     private static readonly LinkedList<IntPtr> _unreleasedMemory = new();
     private static readonly LinkedList<int> _unreleasedMemorySizes = new();
 
-    public static int CropPadding = 10;
+    public const int CropPadding = 20;
     
     public static bool CanBeExecuted => !_status.IsExecuting;
 
-    public static int GetSign(out IntPtr returnArrayPointer, out int returnArraySize)
+    public static int GetSign(out IntPtr returnArrayPointer, out int returnArraySize, 
+        out int returnImageWidth, out int returnImageHeight, out int returnImageStride)
     {
         returnArrayPointer = IntPtr.Zero;
         returnArraySize = 0;
+        returnImageHeight = 0;
+        returnImageWidth = 0;
+        returnImageStride = 0;
         
+        _status.Reset();
         if (_selectedTablet == null || !TabletManager.IsTabletExists(_selectedTablet))
         {
             _selectedTablet = TabletManager.SelectTablet();
@@ -89,17 +92,22 @@ public static class GetterManager
 
         WaitForComplete().Wait();
         _cts.Dispose();
-        returnArrayPointer = _resultPointer;
-        returnArraySize = _resultSize;
-        _unreleasedMemory.AddLast(_resultPointer);
-        _unreleasedMemorySizes.AddLast(_resultSize);
-        _resultPointer = IntPtr.Zero;
-        _resultSize = 0;
+        
+        returnArrayPointer = _result.ResultPointer;
+        returnArraySize = _result.ResultSize;
+        returnImageHeight = _result.ImageHeight;
+        returnImageWidth = _result.ImageWidth;
+        returnImageStride = _result.ImageStride;
+        
+        _unreleasedMemory.AddLast(_result.ResultPointer);
+        _unreleasedMemorySizes.AddLast(_result.ResultSize);
+        _result.Reset();
         return _status.StatusCode;
     }
 
     private static async Task WaitForComplete()
     {
+        if (_cts is null) return;
         while (!_cts.Token.IsCancellationRequested)
         {
             try
@@ -157,7 +165,7 @@ public static class GetterManager
             }
             var cropped = CropSign(rtb);
             CopyToMemory(cropped);
-            _cts.Cancel();
+            _cts?.Cancel();
             _status.StatusCode = 0;
             return true;
         }
@@ -203,14 +211,14 @@ public static class GetterManager
         var stride = (src.PixelWidth * src.Format.BitsPerPixel + 7) / 8;
         var size = stride * src.PixelHeight;
         
-        Console.WriteLine("Stride: " + stride); //TODO remove
-        Console.WriteLine("height: " + src.PixelHeight); //TODO remove
-        Console.WriteLine("width: " + src.PixelWidth); //TODO remove
-
         var ptr = Marshal.AllocHGlobal(size);
         src.CopyPixels(Int32Rect.Empty, ptr, size, stride);
-        _resultPointer = ptr;
-        _resultSize = size;
+        
+        _result.ResultPointer = ptr;
+        _result.ResultSize = size;
+        _result.ImageHeight = src.PixelHeight;
+        _result.ImageWidth = src.PixelWidth;
+        _result.ImageStride = stride;
     }
 
     public static void ReleaseOneMemory()

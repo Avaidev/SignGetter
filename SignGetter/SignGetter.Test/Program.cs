@@ -18,18 +18,16 @@ public static class Program
         {
             IntPtr arrayPtr;
             int size;
-            var result = GetterManager.GetSign(out arrayPtr, out size);
+            int width;
+            int height;
+            int stride;
+            var result = GetterManager.GetSign(out arrayPtr, out size, out width, out height, out stride);
             Console.WriteLine($"Result: 0x{result:x}");
             Console.WriteLine($"Size: {size}");
             await Task.Delay(1000);
             
             byte[] buffer = new byte[size];
             Marshal.Copy(arrayPtr, buffer, 0, size);
-
-            Console.WriteLine("Enter width, height, stride");
-            var width = Convert.ToInt32(Console.ReadLine());
-            var height = Convert.ToInt32(Console.ReadLine());
-            var stride = Convert.ToInt32(Console.ReadLine());
 
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -45,7 +43,7 @@ public static class Program
                 var image = new Image
                 {
                     Source = wb,
-                    Stretch = Stretch.None, // avoid scaling blur
+                    Stretch = Stretch.Uniform, // avoid scaling blur
                     SnapsToDevicePixels = true
                 };
                 RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.NearestNeighbor);

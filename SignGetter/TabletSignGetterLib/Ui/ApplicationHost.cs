@@ -15,7 +15,7 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
     private CanvasWindow? _window;
     private HwndSource? _hwndSrc;
     private bool _hooked;
-    
+
     public IntPtr TargetWindowHandle { get; private set; } = IntPtr.Zero;
     public bool IsRunning => _uiThread is not null && _uiThread.IsAlive && _hooked;
 
