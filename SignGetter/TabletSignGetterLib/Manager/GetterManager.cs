@@ -39,6 +39,11 @@ public static class GetterManager
         _status.Reset();
         if (_selectedTablet == null || !TabletManager.IsTabletExists(_selectedTablet))
         {
+            if (_status.IsRegistered)
+            {
+                TabletManager.UnregisterTablet();
+                _status.IsRegistered = false;
+            }
             _selectedTablet = TabletManager.SelectTablet();
             if (_selectedTablet == null)
             {

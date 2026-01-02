@@ -8,7 +8,7 @@ public class TabletDevice
     public string Manufacturer { get; private set; }
     public readonly int VendorId;
     public readonly int ProductId;
-
+    
     private int _logicalMaxX;
     private int _logicalMaxY;
 

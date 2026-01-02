@@ -34,6 +34,7 @@ public static class Rih //RawInputHelper
         uint uiCommand,
         IntPtr pData,
         ref uint pcbSize);  
+    
     #endregion
    
     #region RawInput Structs
@@ -73,5 +74,6 @@ public static class Rih //RawInputHelper
         public RAWINPUTHEADER header;
         public RAWMOUSE mouse;
     }
+
     #endregion
 }

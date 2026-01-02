@@ -37,3 +37,4 @@ ScaffoldingReadMe.txt
 *.snupkg
 
 .idea/
+.vs/

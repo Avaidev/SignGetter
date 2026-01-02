@@ -12,9 +12,10 @@ public static class TabletManager
     public static List<TabletDevice> GetDevices()
     {
         return DeviceList.Local.GetHidDevices().Where(IsSimilarToTablet)
-            .Select(d => new TabletDevice(d)).ToList();
+            .Select(d => new TabletDevice(d))
+            .ToList();
     }
-
+    
     public static TabletDevice? SelectTablet()
     {
         var tablets1 = GetDevices();
@@ -71,7 +72,7 @@ public static class TabletManager
 
             foreach (var keyword in internalKeywords)
             {
-                if (device.GetProductName().Contains(keyword, StringComparison.OrdinalIgnoreCase)) return false;
+                if (device.GetProductName().ToLowerInvariant().Contains(keyword.ToLowerInvariant())) return false;
             }
 
             return true;

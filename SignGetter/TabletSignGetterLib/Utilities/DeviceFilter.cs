@@ -35,7 +35,7 @@ public static class DeviceFilter
             Marshal.FreeHGlobal(buffer);
         }
     }
-
+    
     public static (int?, int?) GetIdsFromPath(string? path)
     {
         if (path is null) return (null, null);
