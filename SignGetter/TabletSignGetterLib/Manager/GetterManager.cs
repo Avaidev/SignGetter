@@ -42,7 +42,7 @@ public static class GetterManager
             _selectedTablet = TabletManager.SelectTablet();
             if (_selectedTablet == null)
             {
-                MessageService.ErrorMessage("Failed to select the tablet. Check connection");
+                MessageService.WarningMessage("The tablet is not selected!");
                 return (int)StatusCodes.TabletNotFoundDuringSelection;
             }
         }

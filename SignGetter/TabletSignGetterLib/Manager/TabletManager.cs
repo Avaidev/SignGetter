@@ -18,6 +18,12 @@ public static class TabletManager
     public static TabletDevice? SelectTablet()
     {
         var tablets1 = GetDevices();
+        if (tablets1.Count == 0)
+        {
+            Console.WriteLine("[TabletManager] The tablets list is empty");
+            MessageService.ErrorMessage("The tablets list is empty");
+            return null;
+        }
         if (tablets1.Count == 1) return tablets1.First();
         var sb = new StringBuilder();
         var i = 1;
@@ -30,6 +36,7 @@ public static class TabletManager
 
         sb.Append("Enter the device number:");
         var input = Interaction.InputBox(sb.ToString(), "Select Device", "1");
+        if (string.IsNullOrEmpty(input) || string.IsNullOrWhiteSpace(input)) return null;
         try
         {
             var index = Convert.ToInt32(input);
@@ -39,7 +46,7 @@ public static class TabletManager
         }
         catch (Exception ex)
         {
-            Console.WriteLine("[SignGetter] Exception in selecting tablet input: {0}]", ex.Message);
+            Console.WriteLine("[TabletManager] Exception in selecting tablet input: {0}]", ex.Message);
             return null;
         }
     }

@@ -17,7 +17,7 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
     private bool _hooked;
 
     public IntPtr TargetWindowHandle { get; private set; } = IntPtr.Zero;
-    public bool IsRunning => _uiThread is not null && _uiThread.IsAlive && _hooked;
+    public bool IsRunning => _uiThread is { IsAlive: true } && _hooked && Application.Current != null;
 
     private void OnWindowInit(object? sender, EventArgs e)
     {
@@ -53,7 +53,11 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
 
     public void StartApp(KeyEventHandler keyEventFunc)
     {
-        if (_uiThread != null && _window != null) ShutApp();
+        if (_uiThread != null || Application.Current != null)
+        {
+            Console.WriteLine("[SignGetter > AppHost] Cant start the app that is already started");
+            return;
+        }
         _uiThread = new Thread(() =>
         {
             var app = new Application();
