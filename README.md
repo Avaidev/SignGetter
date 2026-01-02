@@ -13,7 +13,7 @@ A C# library for capturing handwritten signatures using design tablets that lack
 
 ## ⚙️ Requirements
 - Windows 10 or later
-- .NET Framework 4.8 (for managed library)
+- .NET Framework 4.7.2 (for managed library)
 - Visual Studio (recommended for building bridge DLL)
 
 ## 🚀 Getting Started
@@ -34,6 +34,7 @@ This produces `TabletSignGetter.Bridge.dll` which exposes a C API.
   #include "TabletSignGetter.Bridge.h"
 
 ## 📕 Available Functions
+
 #### 1. GetSign
 The functions for getting signature.\
 Gets the `void*` array pointer, `int*` array size, `int*` image width, `int*` image height and `int*` image stride. \
@@ -47,6 +48,14 @@ The function to release all blocks of memory.
 #### 5. ShutGetter
 The function to fully shut the SignGetter app. \
 *!!! Use only at the end of program lifetime.*
+
+## 👆 Interaction
+Call the function -> Draw the signature -> \
+Press `Enter` to accept and save \
+Press `Escape` to exit without saving \
+Press `Ctrl + Z` to reset canvas -> \
+Do smth you want.
+
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
