@@ -10,7 +10,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\TabletSignGetterLib\TabletSignGetterLib.csproj" />
-        <PackageReference Include="System.Drawing.Common"/>
     </ItemGroup>
 
 </Project>

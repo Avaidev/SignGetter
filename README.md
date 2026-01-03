@@ -8,13 +8,12 @@ A C# library for capturing handwritten signatures using design tablets that lack
 - No vendor drivers or SDKs required
 - Provides rasterized image output as byte array for later customizing
 - Exposes a C API surface via a C++/CLI bridge
-- Ready-to-use in C, C++, and Delphi projects
+- Ready-to-use in C-based prjects
 - Explicit resource management and robust error handling
 
 ## ⚙️ Requirements
 - Windows 10 or later
-- .NET Framework 4.8 (for managed library)
-- Visual Studio (recommended for building bridge DLL)
+- .NET Framework 4.7.2 (for C# library)
 
 ## 🚀 Getting Started
 
@@ -77,7 +76,13 @@ The function to release all blocks of memory.
 void SignGetter_ReleaseMemory();
 ```
 
-#### 5. ShutGetter
+#### 5. RestartGetter
+The function to recreate window and reregister the tablet.
+```c++
+void SignGetter_RestartGetter();
+```
+
+#### 6. ShutGetter
 The function to fully shut the SignGetter app.
 ```c++
 void SignGetter_ShutGetter();
@@ -96,10 +101,10 @@ Do smth you want with result.
 - `-1` - Other Exception;
 
 * `1 | 0x0001` - Tablets list is Empty;
-* `2 | 0x0002` - Invalid input during tablet selection;
-* `4 | 0x0004` - Tablet not found;
-* `8 | 0x0008` - Exception during selection;
+* `2 | 0x0002` - Tablet not found;
+* `4 | 0x0004` - Exception during selection;
 
+- `8 | 0x0008` - Invalid input;
 - `16 | 0x0010` - Automatically Selected;
 - `32 | 0x0020` - Window Creation timed out;
 
@@ -112,6 +117,7 @@ Do smth you want with result.
 - `2048 | 0x0800` - SignGetter tablet registration failed;
 - `4096 | 0x1000` - Exception during drawing;
 - `8192 | 0x2000` - Exception in reading input data;
+- `16384 | 0x4000` - The canvas window is null;
 
 ## License
 

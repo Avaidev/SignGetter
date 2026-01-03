@@ -24,7 +24,6 @@ public static class TabletManager
         
         if (tablets1.Count == 0)
         {
-            MessageService.ErrorMessage("The tablets list is empty");
             return (int)StatusCodes.TabletListIsEmpty;
         }
         
@@ -45,12 +44,12 @@ public static class TabletManager
 
         sb.Append("Enter the device number:");
         var input = Interaction.InputBox(sb.ToString(), "Select Device", "1");
-        if (string.IsNullOrEmpty(input) || string.IsNullOrWhiteSpace(input)) return (int)StatusCodes.TabletSelectionInvalidInput;
+        if (string.IsNullOrEmpty(input) || string.IsNullOrWhiteSpace(input)) return (int)StatusCodes.InvalidInput;
         
         try
         {
             var index = Convert.ToInt32(input);
-            if (index < 1 || index > tablets1.Count) return (int)StatusCodes.TabletSelectionInvalidInput;
+            if (index < 1 || index > tablets1.Count) return (int)StatusCodes.InvalidInput;
             var selected = tablets1[index - 1];
             if (IsTabletExists(selected))
             {

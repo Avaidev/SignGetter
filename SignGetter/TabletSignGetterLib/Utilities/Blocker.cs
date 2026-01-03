@@ -27,7 +27,6 @@ static class Blocker
             int vkCode = Marshal.ReadInt32(lParam);
             if (vkCode == (int)Keys.LWin || vkCode == (int)Keys.RWin)
             {
-                // блокируем Win‑клавишу
                 return (IntPtr)1;
             }
         }

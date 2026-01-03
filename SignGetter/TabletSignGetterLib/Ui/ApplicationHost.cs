@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using TabletLib.Utilities;
+using TabletSignGetterLib.Exceptions;
 
 namespace TabletSignGetterLib.Ui;
 
@@ -17,7 +18,7 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
     private bool _hooked;
 
     public IntPtr TargetWindowHandle { get; private set; } = IntPtr.Zero;
-    public bool IsRunning => _uiThread is { IsAlive: true } && _hooked && Application.Current != null;
+    public bool IsRunning => Application.Current != null && _window != null && _hooked;
 
     private void OnWindowInit(object? sender, EventArgs e)
     {
@@ -31,9 +32,9 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
 
     private void SetHook()
     {
-        if (TargetWindowHandle == IntPtr.Zero) throw new InvalidOperationException();
+        if (TargetWindowHandle == IntPtr.Zero) return;
         _hwndSrc = HwndSource.FromHwnd(TargetWindowHandle);
-        if (_hwndSrc is null) throw new InvalidOperationException(); //TODO Exceptions
+        if (_hwndSrc is null) return;
         _hwndSrc.AddHook(hook);
         _hooked = true;
     }
@@ -53,67 +54,68 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
 
     public void StartApp(KeyEventHandler keyEventFunc)
     {
-        if (_uiThread != null || Application.Current != null)
+        if (_window != null)
         {
             Console.WriteLine("[SignGetter > AppHost] Cant start the app that is already started");
             return;
         }
-        _uiThread = new Thread(() =>
-        {
-            var app = new Application();
-            _canvas = new InkCanvasHost();
-            _window = new CanvasWindow(_canvas, keyEventFunc);
-            _window.SourceInitialized += OnWindowInit;
-            
-            app.Run(_window);
-        });
         
-        _uiThread.SetApartmentState(ApartmentState.STA);
-        _uiThread.Start();
+        if (Application.Current != null) Application.Current.Dispatcher.Invoke(() =>
+            {
+                _canvas = new InkCanvasHost();
+                _window = new CanvasWindow(_canvas, keyEventFunc);
+                _window.SourceInitialized += OnWindowInit;
+                _window.Show();
+                _window.Hide();
+            });
+        else
+        {
+            _uiThread = new Thread(() =>
+            {
+                var app = new Application();
+                _canvas = new InkCanvasHost();
+                _window = new CanvasWindow(_canvas, keyEventFunc);
+                _window.SourceInitialized += OnWindowInit;
+            
+                app.Run(_window);
+            });
+        
+            _uiThread.SetApartmentState(ApartmentState.STA);
+            _uiThread.Start();
+        }
+    }
+
+    public void RestartApp(KeyEventHandler keyEventFunc)
+    {
+        _window?.Dispatcher.Invoke(() => _window?.Close());
+        _window = null;
+        _hwndSrc?.Dispose();
+        _hwndSrc = null;
+        _hooked = false;
+        StartApp(keyEventFunc);
     }
 
     public void ShowWindow()
     {
-        if (_uiThread != null && _window != null)
+        if (_window == null) throw new InvalidWindowException();
+        
+        DisableLightInput();
+        _window.Dispatcher.Invoke(() =>
         {
-            DisableLightInput();
-            _window.Dispatcher.Invoke(() =>
-            {
-                _window.Show();
-                _window.Focus();
-            });
-        }
+            _window.Show();
+            _window.Focus();
+        });
     }
 
     public void HideWindow()
     {
-        if (_uiThread != null && _window != null)
+        if (_window == null) throw new InvalidWindowException();
+        
+        EnableLightInput();
+        _window.Dispatcher.Invoke(() =>
         {
-            EnableLightInput();
-            _window.Dispatcher.Invoke(() =>
-            {
-                _window.Hide();
-            });
-        }
-    }
-    
-    public void ShutApp()
-    {
-        if (_uiThread != null && _window != null)
-        {
-            EnableLightInput();
-            _window.Dispatcher.Invoke(() =>
-            {
-                _window.Close();
-                Application.Current.Shutdown();
-            });
-            
-            _uiThread.Join();
-            _window = null;
-            _hwndSrc?.Dispose();
-            _hooked = false;
-            _uiThread = null;
-        }
+            _window.Hide();
+        });
     }
 
     public void DrawPoint(float absoluteX, float absoluteY)
@@ -123,7 +125,7 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
             var x = absoluteX * _canvas.ActualWidth;
             var y = absoluteY * _canvas.ActualHeight;
 
-            _canvas.Dispatcher.Invoke(() => _canvas.DrawPoint(x, y));
+            _canvas.DrawPoint(x, y);
         });
     }
 
@@ -151,59 +153,82 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
 
     private void DisableCursor()
     {
-        if (_uiThread == null || _window == null)
-        {
-            Console.WriteLine("[SignGetter > Ui] Cant disable cursor when the app or window is not available");
-            return;
-        }
+        if (_window == null) throw new InvalidWindowException("Cant disable the cursor when window is null");
 
         _window.Dispatcher.Invoke(() =>
         {
-            while (Blocker.ShowCursor(false) >= 0) { }
+            // while (Blocker.ShowCursor(false) >= 0) { }
+            Mouse.OverrideCursor = Cursors.Pen;
             _window.IsHitTestVisible = false;
         });
+        
         Console.WriteLine("[SignGetter > Ui] Cursor has been disabled");
     }
 
     private void EnableCursor()
     {
-        if (_uiThread == null || _window == null)
-        {
-            Console.WriteLine("[SignGetter > Ui] Cant enable cursor when the app or window is not available");
-            return;
-        }
+        if (_window == null) throw new InvalidWindowException("Cant enable the cursor when window is null");
 
         _window.Dispatcher.Invoke(() =>
         {
-            while (Blocker.ShowCursor(true) < 0)
-            {
-            }
-
-            _window.Cursor = Cursors.Arrow;
+            // while (Blocker.ShowCursor(true) < 0) { }
+            Mouse.OverrideCursor = Cursors.Arrow;
             _window.IsHitTestVisible = true;
         });
+        
         Console.WriteLine("[SignGetter > Ui] Cursor has been enabled");
     }
 
     public void Dispose()
     {
-        _uiThread?.Interrupt();
-        _hwndSrc?.Dispose();  
+        if (_window == null) return;
+        
+        EnableLightInput();
+        _window.Dispatcher.Invoke(() =>
+        {
+            _window.Close();
+            if (_uiThread != null) Application.Current.Shutdown();
+        });
+        
+        _window = null;
+        _hwndSrc?.Dispose();
         _hooked = false;
+
+        if (_uiThread == null) return;
+        
+        _uiThread.Join();
+        _uiThread = null;
     }
 
     public void ShowMessage(Action<string> msgFunc, string msg)
     {
-        EnableLightInput();
-        msgFunc(msg);
-        DisableCursor();
+        try
+        {
+            EnableLightInput();
+            msgFunc(msg);
+            DisableCursor();
+        }
+        catch (InvalidWindowException ex)
+        {
+            Console.WriteLine("[SignGetter > Ui] Showing message error: {0}", ex.Message);
+            msgFunc(msg);
+        }
     }
 
     public bool AskMessage(Func<string, bool> msgFunc, string msg)
     {
-        EnableLightInput();
-        var result = msgFunc(msg);
-        DisableLightInput();
+        bool result;
+        try
+        {
+            EnableLightInput();
+            result = msgFunc(msg);
+            DisableCursor();
+        }
+        catch (InvalidWindowException ex)
+        {
+            Console.WriteLine("[SignGetter > Ui] Asking message error: {0}", ex.Message);
+            result = msgFunc(msg);
+        }
         return result;
     }
 }

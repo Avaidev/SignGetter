@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
@@ -41,8 +42,7 @@ public static class GetterManager
         
         if (!CanBeExecuted)
         {
-            MessageService.ErrorMessage("The tablet process is currently running. Call later");
-            Console.WriteLine("[SignGetter] The tablet process is currently running. Cant execute your request");
+            MessageService.ErrorMessage(StatusCodeToStringConverter(StatusCodes.GetterProcessNotCompleted));
             return (int)StatusCodes.GetterProcessNotCompleted;
         }
         
@@ -63,15 +63,13 @@ public static class GetterManager
 
             if (attempts <= 0)
             {
-                MessageService.ErrorMessage("Error creating window");
-                Console.WriteLine("[SignGetter] Error creating window");
+                MessageService.ErrorMessage(StatusCodeToStringConverter(StatusCodes.WindowCreationTimedOut));
                 return (int)StatusCodes.WindowCreationTimedOut;
             }
         }
 
-        if (!_status.IsRegistered && !RegisterTablet()) return _status.StatusCode;
-        
-        StartProcessing();
+        if ((!_status.IsRegistered && !RegisterTablet()) || !StartProcessing()) return _status.StatusCode;
+
         WaitForComplete().Wait();
         _cts!.Dispose();
         
@@ -94,7 +92,7 @@ public static class GetterManager
         var status = TabletManager.SelectTablet(out _selectedTablet);
         if ((StatusCodes)status is (StatusCodes.Success or StatusCodes.AutoSelected)) return true;
         
-        MessageService.WarningMessage("The tablet is not selected!");
+        MessageService.WarningMessage($"The tablet is not selected! {StatusCodeToStringConverter((StatusCodes)status)}");
         ChangeStatus(status);
         return false;
     }
@@ -252,13 +250,25 @@ public static class GetterManager
     #endregion
 
     #region Process Controlling
-    private static void StartProcessing()
+    private static bool StartProcessing()
     {
-        _appHost.ClearCanvas();
-        _appHost.ShowWindow();
-        _status.IsExecuting = true;
-        _status.IsBlocked = false;
-        _cts = new();
+        try
+        {
+            _appHost.ClearCanvas();
+            _appHost.ShowWindow();
+            _status.IsExecuting = true;
+            _status.IsBlocked = false;
+            _cts = new();
+            return true;
+        }
+        catch (InvalidWindowException ex)
+        {
+            Console.WriteLine("[SignGetter] Error in StartProcessing: {0}]", ex.Message);
+            ChangeStatus(StatusCodes.InvalidWindow);
+            _status.IsExecuting = false;
+            _status.IsBlocked = true;
+            return false;
+        }
     }
 
     private static void BlockProcessing() => _status.IsBlocked = true;
@@ -267,19 +277,36 @@ public static class GetterManager
         
     private static void StopProcessing()
     {
-        _cts?.Cancel();
-        _appHost.HideWindow();
-        _status.IsExecuting = false;
-        _status.IsBlocked = true;
+        try
+        {
+            _cts?.Cancel();
+            _appHost.HideWindow();
+            _status.IsExecuting = false;
+            _status.IsBlocked = true;
+        }
+        catch (InvalidWindowException ex)
+        {
+            Console.WriteLine("[SignGetter] Error in StopProcessing: {0}]", ex.Message);
+            ChangeStatus(StatusCodes.InvalidWindow);
+            _status.IsExecuting = true;
+            _status.IsBlocked = false;
+        }
+    }
+
+    public static void RestartGetter()
+    {
+        if (_status.IsExecuting) StopProcessing();
+        UnregisterTablet();
+        _targetHandler = IntPtr.Zero;
+        _appHost.RestartApp(KeyDownEvent);
     }
 
     public static void ShutGetter()
     {
         if (_status.IsExecuting) StopProcessing();
-        TabletManager.UnregisterTablet();
+        UnregisterTablet();
         _targetHandler = IntPtr.Zero;
-        _status.IsRegistered = false;
-        _appHost.ShutApp();
+        _appHost.Dispose();
     }
     #endregion
 
@@ -289,7 +316,7 @@ public static class GetterManager
         if (TabletManager.RegisterTablet(_appHost.TargetWindowHandle)) _status.IsRegistered = true;
         else
         {
-            MessageService.ErrorMessage("Error registering the tablet");
+            MessageService.ErrorMessage(StatusCodeToStringConverter(StatusCodes.TabletRegisterFailed));
             _status.IsRegistered = false;
             ChangeStatus(StatusCodes.TabletRegisterFailed);
         }
@@ -311,6 +338,41 @@ public static class GetterManager
     private static void ChangeStatus(int status)
     {
         _status.StatusCode ^= status;
+    }
+
+    private static string StatusCodeToStringConverter(int status)
+    {
+        return status switch
+        {
+            0 => "Success",
+            -1 => "Other",
+            0x01 => "Tablets list is empty",
+            0x02 => "Tablet not found",
+            0x04 => "Other tablet selection error",
+
+            0x08 => "Invalid input",
+            0x10 => "Auto selected",
+
+            0x20 => "Window creation timed out",
+
+            0x40 => "Saving error",
+            0x80 => "Canvas is Null",
+            0x100 => "Canvas is Empty",
+            0x200 => "Out of Memory",
+
+            0x400 => "SignGetter is currently executing",
+            0x800 => "Tablet registering failed",
+            0x1000 => "Exception in drawing",
+            0x2000 => "Exception in reading input data",
+
+            0x4000 => "Invalid window",
+            _ => "Unknown error"
+        };
+    }
+
+    private static string StatusCodeToStringConverter(StatusCodes status)
+    {
+        return StatusCodeToStringConverter((int)status);
     }
     #endregion
 

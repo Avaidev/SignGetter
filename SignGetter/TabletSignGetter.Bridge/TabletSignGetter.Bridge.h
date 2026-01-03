@@ -22,6 +22,8 @@ extern "C" {
 
     __declspec(dllimport) void SignGetter_ReleaseMemory();
 
+    _declspec(dllimport) void SignGetter_RestartGetter();
+
     __declspec(dllimport) void SignGetter_ShutGetter();
 
 #ifdef __cplusplus

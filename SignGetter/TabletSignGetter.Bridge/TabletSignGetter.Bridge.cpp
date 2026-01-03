@@ -32,6 +32,10 @@ public:
 		GetterManager::ReleaseMemory();
 	}
 
+	static void RestartGetterWrapper() {
+		GetterManager::RestartGetter();
+	}
+
 	static void ShutGetterWrapper() {
 		GetterManager::ShutGetter();
 	}
@@ -88,6 +92,10 @@ extern "C" {
 
 	_declspec(dllexport) void SignGetter_ReleaseMemory() {
 		SignGetterBridge::ReleaseMemoryWrapper();
+	}
+
+	_declspec(dllexport) void SignGetter_RestartGetter() {
+		SignGetterBridge::RestartGetterWrapper();
 	}
 
 	_declspec(dllexport) void SignGetter_ShutGetter() {
