@@ -45,14 +45,14 @@ Returns the Status Code of the function execution result
 - `returnImageHeight` - the height of the result image;
 - `returnImageStride` - the stride of the result image (for later processing);
 
-#### 2. SignGetter_SelectTablet
+#### 2. SelectTablet
 The function for selecting tablet from available list.
 ```c++
 bool SignGetter_SelectTablet();
 ```
 Returns `true` if the tablet was selected, otherwise `false`;
 
-#### 3. SignGetter_GetStatusCode
+#### 3. GetStatusCode
 The function for getting current Status Code.
 ```c++
 int SignGetter_GetStatusCode();
@@ -64,6 +64,8 @@ The function for checking whether the GetSign can be executed.
 ```c++
 bool SignGetter_CanBeExecuted();
 ```
+Returns `true` if GetSign can be executed, otherwise `false`;
+
 #### 3. ReleaseOneMemory
 The function to release the one first block of memory.
 ```c++
