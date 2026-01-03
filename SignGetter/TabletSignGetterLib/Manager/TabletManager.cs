@@ -2,6 +2,7 @@
 using System.Text;
 using HidSharp;
 using Microsoft.VisualBasic;
+using TabletSignGetterLib.Exceptions;
 using TabletSignGetterLib.Models;
 using TabletSignGetterLib.Utilities;
 
@@ -9,23 +10,30 @@ namespace TabletSignGetterLib.Manager;
 
 public static class TabletManager
 {
-    public static List<TabletDevice> GetDevices()
+    private static List<TabletDevice> GetDevices()
     {
         return DeviceList.Local.GetHidDevices().Where(IsSimilarToTablet)
             .Select(d => new TabletDevice(d))
             .ToList();
     }
     
-    public static TabletDevice? SelectTablet()
+    public static int SelectTablet(out TabletDevice? selectedTablet)
     {
+        selectedTablet = null;
         var tablets1 = GetDevices();
+        
         if (tablets1.Count == 0)
         {
-            Console.WriteLine("[TabletManager] The tablets list is empty");
             MessageService.ErrorMessage("The tablets list is empty");
-            return null;
+            return (int)StatusCodes.TabletListIsEmpty;
         }
-        if (tablets1.Count == 1) return tablets1.First();
+        
+        if (tablets1.Count == 1)
+        {
+            selectedTablet = tablets1.First();
+            return (int)StatusCodes.AutoSelected;
+        }
+        
         var sb = new StringBuilder();
         var i = 1;
         foreach (var tablet in tablets1)
@@ -37,22 +45,29 @@ public static class TabletManager
 
         sb.Append("Enter the device number:");
         var input = Interaction.InputBox(sb.ToString(), "Select Device", "1");
-        if (string.IsNullOrEmpty(input) || string.IsNullOrWhiteSpace(input)) return null;
+        if (string.IsNullOrEmpty(input) || string.IsNullOrWhiteSpace(input)) return (int)StatusCodes.TabletSelectionInvalidInput;
+        
         try
         {
             var index = Convert.ToInt32(input);
-            if (index < 1 || index > tablets1.Count) return null;
+            if (index < 1 || index > tablets1.Count) return (int)StatusCodes.TabletSelectionInvalidInput;
             var selected = tablets1[index - 1];
-            return IsTabletExists(selected) ? selected : null;
+            if (IsTabletExists(selected))
+            {
+                selectedTablet = selected;
+                return (int)StatusCodes.Success;
+            }
+
+            return (int)StatusCodes.TabletNotFound;
         }
         catch (Exception ex)
         {
             Console.WriteLine("[TabletManager] Exception in selecting tablet input: {0}]", ex.Message);
-            return null;
+            return (int)StatusCodes.TabletSelectionOtherException;
         }
     }
     
-    public static bool IsSimilarToTablet(HidDevice device)
+    private static bool IsSimilarToTablet(HidDevice device)
     {
         try
         {

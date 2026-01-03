@@ -3,14 +3,24 @@
 public enum StatusCodes : int
 {
     Success = 0,
-    TabletNotFoundDuringSelection = 0x01,
-    GetterProcessNotCompleted = 0x02,
-    CanvasWindowTimedOut = 0x04,
-    TabletRegisterFailed = 0x08,
-    CanvasIsNull = 0x10,
-    OutOfMemory = 0x20,
-    CanvasIsEmpty = 0x40,
-    DrawingException = 0x80,
-    InputReadingException = 0x100,
-    OtherException = 0x8000,
+    OtherException = -1,
+    
+    TabletListIsEmpty = 0x01,
+    TabletSelectionInvalidInput = 0x02,
+    TabletNotFound = 0x04,
+    TabletSelectionOtherException = 0x08,
+    
+    AutoSelected = 0x10,
+    
+    WindowCreationTimedOut = 0x20,
+    
+    SavingException = 0x40,
+    CanvasIsNull = 0x80,
+    CanvasIsEmpty = 0x100,
+    OutOfMemory = 0x200,
+    
+    GetterProcessNotCompleted = 0x400,
+    TabletRegisterFailed = 0x800,
+    DrawingException = 0x1000,
+    InputReadingException = 0x2000,
 }

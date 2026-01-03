@@ -12,7 +12,11 @@ extern "C" {
         int* returnImageStride
     );
 
-    __declspec(dllimport) int SignGetter_CanBeExecuted();
+    _declspec(dllimport) bool SignGetter_SelectTablet();
+
+    _declspec(dllimport) int SignGetter_GetStatusCode();
+
+    __declspec(dllimport) bool SignGetter_CanBeExecuted();
 
     __declspec(dllimport) void SignGetter_ReleaseOneMemory();
 

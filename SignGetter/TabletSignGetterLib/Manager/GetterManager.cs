@@ -13,6 +13,8 @@ namespace TabletSignGetterLib.Manager;
 
 public static class GetterManager
 {
+    private const int CropPadding = 20;
+    
     private static readonly ApplicationHost _appHost = new(WindowHookProcess);
     private static TabletDevice? _selectedTablet;
     private static GetterStatus _status = new();
@@ -22,10 +24,9 @@ public static class GetterManager
     
     private static readonly LinkedList<IntPtr> _unreleasedMemory = new();
     private static readonly LinkedList<int> _unreleasedMemorySizes = new();
-
-    public const int CropPadding = 20;
     
     public static bool CanBeExecuted => !_status.IsExecuting;
+    public static int GetStatusCode() => _status.StatusCode;
 
     public static int GetSign(out IntPtr returnArrayPointer, out int returnArraySize, 
         out int returnImageWidth, out int returnImageHeight, out int returnImageStride)
@@ -37,26 +38,17 @@ public static class GetterManager
         returnImageStride = 0;
         
         _status.Reset();
-        if (_selectedTablet == null || !TabletManager.IsTabletExists(_selectedTablet))
-        {
-            if (_status.IsRegistered)
-            {
-                TabletManager.UnregisterTablet();
-                _status.IsRegistered = false;
-            }
-            _selectedTablet = TabletManager.SelectTablet();
-            if (_selectedTablet == null)
-            {
-                MessageService.WarningMessage("The tablet is not selected!");
-                return (int)StatusCodes.TabletNotFoundDuringSelection;
-            }
-        }
         
         if (!CanBeExecuted)
         {
-            MessageService.ErrorMessage("The tablet process is currently running. Please wait a bit");
+            MessageService.ErrorMessage("The tablet process is currently running. Call later");
             Console.WriteLine("[SignGetter] The tablet process is currently running. Cant execute your request");
             return (int)StatusCodes.GetterProcessNotCompleted;
+        }
+        
+        if (_selectedTablet == null || !TabletManager.IsTabletExists(_selectedTablet))
+        {
+            if (!SelectTablet()) return _status.StatusCode;
         }
         
         if (!_appHost.IsRunning)
@@ -72,31 +64,16 @@ public static class GetterManager
             if (attempts <= 0)
             {
                 MessageService.ErrorMessage("Error creating window");
-                Console.WriteLine("[SignGetter] Error creating window. Critical");
-                return (int)StatusCodes.CanvasWindowTimedOut;
+                Console.WriteLine("[SignGetter] Error creating window");
+                return (int)StatusCodes.WindowCreationTimedOut;
             }
         }
 
-        if (!_status.IsRegistered) 
-        {
-            if (!TabletManager.RegisterTablet(_appHost.TargetWindowHandle))
-            {
-                MessageService.ErrorMessage("Error registering the tablet");
-                Console.WriteLine("[SignGetter] Failed to register the tablet");
-                return (int)StatusCodes.TabletRegisterFailed;
-            }
-
-            _status.IsRegistered = true;
-        }
+        if (!_status.IsRegistered && !RegisterTablet()) return _status.StatusCode;
         
-        _appHost.ClearCanvas();
-        _appHost.ShowWindow();
-        _status.IsExecuting = true;
-        _status.IsBlocked = false;
-        _cts = new();
-
+        StartProcessing();
         WaitForComplete().Wait();
-        _cts.Dispose();
+        _cts!.Dispose();
         
         returnArrayPointer = _result.ResultPointer;
         returnArraySize = _result.ResultSize;
@@ -110,6 +87,18 @@ public static class GetterManager
         return _status.StatusCode;
     }
 
+    public static bool SelectTablet()
+    {
+        if (_status.IsRegistered) UnregisterTablet();
+        
+        var status = TabletManager.SelectTablet(out _selectedTablet);
+        if ((StatusCodes)status is (StatusCodes.Success or StatusCodes.AutoSelected)) return true;
+        
+        MessageService.WarningMessage("The tablet is not selected!");
+        ChangeStatus(status);
+        return false;
+    }
+    
     private static async Task WaitForComplete()
     {
         if (_cts is null) return;
@@ -146,44 +135,49 @@ public static class GetterManager
             case Key.Enter:
             {
                 e.Handled = true;
-                if (!SaveImage()) _appHost.ShowMessage(MessageService.ErrorMessage, "Failed to save sign to memory. Try again");
+                BlockProcessing();
+                if (!SaveImage())
+                {
+                    _appHost.ShowMessage(MessageService.ErrorMessage, "Failed to save sign to memory. Try again");
+                    UnblockProcessing();
+                }
                 else StopProcessing();
                 return;
             }
         }
     }
 
+    #region Save Result
     private static bool SaveImage()
     {
         try
         {
             if (!_appHost.CanRender())
             {
-                _status.StatusCode = (int)StatusCodes.CanvasIsEmpty;
+                ChangeStatus(StatusCodes.CanvasIsEmpty);
                 return false;
             }
+            
             var rtb = _appHost.RenderCanvas();
             if (rtb == null)
             {
-                _status.StatusCode = (int)StatusCodes.CanvasIsNull;
+                ChangeStatus(StatusCodes.CanvasIsNull);
                 return false;
             }
             var cropped = CropSign(rtb);
             CopyToMemory(cropped);
-            _cts?.Cancel();
-            _status.StatusCode = 0;
             return true;
         }
         catch (OutOfMemoryException ex)
         {
             Console.WriteLine("[SignGetter] Too much memory requested: {0}", ex.Message);
-            _status.StatusCode = (int)StatusCodes.OutOfMemory;
+            ChangeStatus(StatusCodes.OutOfMemory);
             return false;
         }
         catch (Exception ex)
         {
             Console.WriteLine("[SignGetter > SaveImage] Error in saving: {0}", ex.Message);
-            _status.StatusCode = (int)StatusCodes.OtherException;
+            ChangeStatus(StatusCodes.SavingException);
             return false;
         }
     }
@@ -225,7 +219,9 @@ public static class GetterManager
         _result.ImageWidth = src.PixelWidth;
         _result.ImageStride = stride;
     }
+    #endregion
 
+    #region Memory Controlling
     public static void ReleaseOneMemory()
     {
         try
@@ -253,9 +249,25 @@ public static class GetterManager
         _unreleasedMemory.Clear();
         _unreleasedMemorySizes.Clear();
     }
+    #endregion
+
+    #region Process Controlling
+    private static void StartProcessing()
+    {
+        _appHost.ClearCanvas();
+        _appHost.ShowWindow();
+        _status.IsExecuting = true;
+        _status.IsBlocked = false;
+        _cts = new();
+    }
+
+    private static void BlockProcessing() => _status.IsBlocked = true;
+
+    private static void UnblockProcessing() => _status.IsBlocked = false;
         
     private static void StopProcessing()
     {
+        _cts?.Cancel();
         _appHost.HideWindow();
         _status.IsExecuting = false;
         _status.IsBlocked = true;
@@ -269,6 +281,38 @@ public static class GetterManager
         _status.IsRegistered = false;
         _appHost.ShutApp();
     }
+    #endregion
+
+    #region Utils
+    private static bool RegisterTablet()
+    {
+        if (TabletManager.RegisterTablet(_appHost.TargetWindowHandle)) _status.IsRegistered = true;
+        else
+        {
+            MessageService.ErrorMessage("Error registering the tablet");
+            _status.IsRegistered = false;
+            ChangeStatus(StatusCodes.TabletRegisterFailed);
+        }
+
+        return _status.IsRegistered;
+    }
+
+    private static void UnregisterTablet()
+    {
+        TabletManager.UnregisterTablet();
+        _status.IsRegistered = false;
+    }
+
+    private static void ChangeStatus(StatusCodes status)
+    {
+        _status.StatusCode ^= (int)status;
+    }
+
+    private static void ChangeStatus(int status)
+    {
+        _status.StatusCode ^= status;
+    }
+    #endregion
 
     #region Message Processing
     private static IntPtr WindowHookProcess(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

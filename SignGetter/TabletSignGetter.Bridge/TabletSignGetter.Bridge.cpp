@@ -7,13 +7,21 @@ using namespace TabletSignGetterLib::Manager;
 public ref class SignGetterBridge
 {
 public:
-	static int CanBeExecutedWrapper() {
+	static bool CanBeExecutedWrapper() {
 		return GetterManager::CanBeExecuted;
+	}
+
+	static int GetStatusCodeWrapper() {
+		return GetterManager::GetStatusCode();
 	}
 
 	static int GetSignWrapper(IntPtr% returnArrayPointer, int% returnArraySize,
 		int% returnImageWidth, int% returnImageHeight, int% returnImageStride) {
 		return GetterManager::GetSign(returnArrayPointer, returnArraySize, returnImageWidth, returnImageHeight, returnImageStride);
+	}
+
+	static bool SelectTabletWrapper() {
+		return GetterManager::SelectTablet();
 	}
 
 	static void ReleaseOneMemoryWrapper() {
@@ -62,8 +70,16 @@ extern "C" {
 		}
 	}
 
-	_declspec(dllexport) int SignGetter_CanBeExecuted() {
+	_declspec(dllexport) bool SignGetter_SelectTablet() {
+		return SignGetterBridge::SelectTabletWrapper();
+	}
+
+	_declspec(dllexport) bool SignGetter_CanBeExecuted() {
 		return SignGetterBridge::CanBeExecutedWrapper();
+	}
+
+	_declspec(dllexport) int SignGetter_GetStatusCode() {
+		return SignGetterBridge::GetStatusCodeWrapper();
 	}
 
 	_declspec(dllexport) void SignGetter_ReleaseOneMemory() {

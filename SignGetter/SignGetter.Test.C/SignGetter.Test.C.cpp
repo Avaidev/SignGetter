@@ -28,7 +28,7 @@ void GetSign() {
     int result = SignGetter_GetSign(&buffer, &size, &width, &height, &stride);
 
     cout << "\nResult Code: " << result << endl;
-    if (result == 0) {
+    if (result == 0 || result == 16) {
         cout << "Report:\nSize: " << size
             << "\nImage Width: " << width
             << "\nImage Height:" << height
