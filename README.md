@@ -1,4 +1,4 @@
-# Signature Captutre library (Windows)
+# Signature Capture library (Windows)
 
 A C# library for capturing handwritten signatures using design tablets that lack proper drivers. Windows often recognize such tablets as mouse devices - this library interprets those events to record pen strokes.
 
