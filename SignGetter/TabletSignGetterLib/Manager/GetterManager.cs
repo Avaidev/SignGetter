@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
@@ -16,15 +15,14 @@ public static class GetterManager
 {
     private const int CropPadding = 20;
     
-    private static readonly ApplicationHost _appHost = new(WindowHookProcess);
+    private static readonly ApplicationHost AppHost = new(WindowHookProcess);
     private static TabletDevice? _selectedTablet;
     private static GetterStatus _status = new();
     private static GetterResult _result = new();
     private static IntPtr _targetHandler = IntPtr.Zero;
     private static CancellationTokenSource? _cts;
     
-    private static readonly LinkedList<IntPtr> _unreleasedMemory = new();
-    private static readonly LinkedList<int> _unreleasedMemorySizes = new();
+    private static readonly LinkedList<IntPtr> UnreleasedMemory = new();
     
     public static bool CanBeExecuted => !_status.IsExecuting;
     public static int GetStatusCode() => _status.StatusCode;
@@ -51,15 +49,15 @@ public static class GetterManager
             if (!SelectTablet()) return _status.StatusCode;
         }
         
-        if (!_appHost.IsRunning)
+        if (!AppHost.IsRunning)
         {
-            _appHost.StartApp(KeyDownEvent);
+            AppHost.StartApp(KeyDownEvent);
             var attempts = 10;
             do
             {
                 Task.Delay(500).Wait();
             }
-            while(!_appHost.IsRunning && attempts-- > 0);
+            while(!AppHost.IsRunning && attempts-- > 0);
 
             if (attempts <= 0)
             {
@@ -79,8 +77,7 @@ public static class GetterManager
         returnImageWidth = _result.ImageWidth;
         returnImageStride = _result.ImageStride;
         
-        _unreleasedMemory.AddLast(_result.ResultPointer);
-        _unreleasedMemorySizes.AddLast(_result.ResultSize);
+        UnreleasedMemory.AddLast(_result.ResultPointer);
         _result.Reset();
         return _status.StatusCode;
     }
@@ -120,14 +117,14 @@ public static class GetterManager
             case Key.Escape:
             {
                 e.Handled = true;
-                if (_appHost.AskMessage(MessageService.AskYesNoMessage, "Do you want to exit without saving?"))
+                if (AppHost.AskMessage(MessageService.AskYesNoMessage, "Do you want to exit without saving?"))
                     StopProcessing();
                 return;
             }
             
             case Key.Z when Keyboard.Modifiers == ModifierKeys.Control:
                 e.Handled = true;
-                _appHost.ClearCanvas();
+                AppHost.ClearCanvas();
                 return;
             
             case Key.Enter:
@@ -136,7 +133,7 @@ public static class GetterManager
                 BlockProcessing();
                 if (!SaveImage())
                 {
-                    _appHost.ShowMessage(MessageService.ErrorMessage, "Failed to save sign to memory. Try again");
+                    AppHost.ShowMessage(MessageService.ErrorMessage, "Failed to save sign to memory. Try again");
                     UnblockProcessing();
                 }
                 else StopProcessing();
@@ -150,13 +147,13 @@ public static class GetterManager
     {
         try
         {
-            if (!_appHost.CanRender())
+            if (!AppHost.CanRender())
             {
                 ChangeStatus(StatusCodes.CanvasIsEmpty);
                 return false;
             }
             
-            var rtb = _appHost.RenderCanvas();
+            var rtb = AppHost.RenderCanvas();
             if (rtb == null)
             {
                 ChangeStatus(StatusCodes.CanvasIsNull);
@@ -224,13 +221,12 @@ public static class GetterManager
     {
         try
         {
-            var ptr = _unreleasedMemory.First?.Value;
+            var ptr = UnreleasedMemory.First?.Value;
             if (ptr == null) return;
             
             Marshal.FreeHGlobal(ptr.Value);
             
-            _unreleasedMemory.RemoveFirst();
-            _unreleasedMemorySizes.RemoveFirst();
+            UnreleasedMemory.RemoveFirst();
         }
         catch (InvalidOperationException)
         {
@@ -240,12 +236,11 @@ public static class GetterManager
 
     public static void ReleaseMemory()
     {
-        foreach (var ptr in _unreleasedMemory)
+        foreach (var ptr in UnreleasedMemory)
         {
             Marshal.FreeHGlobal(ptr);
         }
-        _unreleasedMemory.Clear();
-        _unreleasedMemorySizes.Clear();
+        UnreleasedMemory.Clear();
     }
     #endregion
 
@@ -254,8 +249,8 @@ public static class GetterManager
     {
         try
         {
-            _appHost.ClearCanvas();
-            _appHost.ShowWindow();
+            AppHost.ClearCanvas();
+            AppHost.ShowWindow();
             _status.IsExecuting = true;
             _status.IsBlocked = false;
             _cts = new();
@@ -280,7 +275,7 @@ public static class GetterManager
         try
         {
             _cts?.Cancel();
-            _appHost.HideWindow();
+            AppHost.HideWindow();
             _status.IsExecuting = false;
             _status.IsBlocked = true;
         }
@@ -298,7 +293,7 @@ public static class GetterManager
         if (_status.IsExecuting) StopProcessing();
         UnregisterTablet();
         _targetHandler = IntPtr.Zero;
-        _appHost.RestartApp(KeyDownEvent);
+        AppHost.RestartApp(KeyDownEvent);
     }
 
     public static void ShutGetter()
@@ -306,14 +301,14 @@ public static class GetterManager
         if (_status.IsExecuting) StopProcessing();
         UnregisterTablet();
         _targetHandler = IntPtr.Zero;
-        _appHost.Dispose();
+        AppHost.Dispose();
     }
     #endregion
 
     #region Utils
     private static bool RegisterTablet()
     {
-        if (TabletManager.RegisterTablet(_appHost.TargetWindowHandle)) _status.IsRegistered = true;
+        if (TabletManager.RegisterTablet(AppHost.TargetWindowHandle)) _status.IsRegistered = true;
         else
         {
             MessageService.ErrorMessage(StatusCodeToStringConverter(StatusCodes.TabletRegisterFailed));
@@ -394,7 +389,7 @@ public static class GetterManager
         if (vid is null || pid is null) return false;
 
         return _selectedTablet?.VendorId == vid.Value
-               && _selectedTablet?.ProductId == pid.Value;
+               && _selectedTablet.ProductId == pid.Value;
     }
     
     private static bool ProcessRawInput(IntPtr lParam)
@@ -459,10 +454,10 @@ public static class GetterManager
         
             if (_status.TipStatus)
             {
-                _appHost.DrawPoint(data.X, data.Y);
+                AppHost.DrawPoint(data.X, data.Y);
                 SaveCriticalValues(data.X, data.Y);
             }
-            else _appHost.ResetCanvasPoint();
+            else AppHost.ResetCanvasPoint();
         }
         catch (Exception ex)
         {

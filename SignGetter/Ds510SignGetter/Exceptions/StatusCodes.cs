@@ -5,10 +5,7 @@ public enum StatusCodes
     Success = 0,
     WindowCreationTimedOut = 1,
     OperationCanceled = 2,
-    OutOfMemory = 3,
-    SavingException = 4,
-    CanvasIsEmpty = 5,
-    WindowIsNull = 6
+    OtherException = -3
 }
 
 public enum SdkErrorCodes

@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ds510SignGetter", "Ds510Sig
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ds510SignGetter.Test", "Ds510SignGetter.Test\Ds510SignGetter.Test.csproj", "{83A8D3AD-D87C-46A1-B988-9D8A6EF35382}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ds510SignGetter.Bridge", "Ds510SignGetter.Bridge\Ds510SignGetter.Bridge.vcxproj", "{8D134681-1DD6-9415-3862-CA200D5E74C9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ds510SingGetter.Test.C", "Ds510SingGetter.Test.C\Ds510SingGetter.Test.C.vcxproj", "{9449ABAC-A3EF-4800-BA42-7084403BAE22}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +101,30 @@ Global
 		{83A8D3AD-D87C-46A1-B988-9D8A6EF35382}.Release|x64.Build.0 = Release|Any CPU
 		{83A8D3AD-D87C-46A1-B988-9D8A6EF35382}.Release|x86.ActiveCfg = Release|Any CPU
 		{83A8D3AD-D87C-46A1-B988-9D8A6EF35382}.Release|x86.Build.0 = Release|Any CPU
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Debug|Any CPU.Build.0 = Debug|x64
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Debug|x64.ActiveCfg = Debug|x64
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Debug|x64.Build.0 = Debug|x64
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Debug|x86.ActiveCfg = Debug|Win32
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Debug|x86.Build.0 = Debug|Win32
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Release|Any CPU.ActiveCfg = Release|x64
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Release|Any CPU.Build.0 = Release|x64
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Release|x64.ActiveCfg = Release|x64
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Release|x64.Build.0 = Release|x64
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Release|x86.ActiveCfg = Release|Win32
+		{8D134681-1DD6-9415-3862-CA200D5E74C9}.Release|x86.Build.0 = Release|Win32
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Debug|Any CPU.Build.0 = Debug|x64
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Debug|x64.ActiveCfg = Debug|x64
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Debug|x64.Build.0 = Debug|x64
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Debug|x86.ActiveCfg = Debug|Win32
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Debug|x86.Build.0 = Debug|Win32
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Release|Any CPU.ActiveCfg = Release|x64
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Release|Any CPU.Build.0 = Release|x64
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Release|x64.ActiveCfg = Release|x64
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Release|x64.Build.0 = Release|x64
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Release|x86.ActiveCfg = Release|Win32
+		{9449ABAC-A3EF-4800-BA42-7084403BAE22}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

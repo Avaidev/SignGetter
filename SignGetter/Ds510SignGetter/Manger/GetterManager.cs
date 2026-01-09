@@ -141,6 +141,7 @@ public static class GetterManager // Max X/Y = 0 + 7999; Max P = 2047 + 0
         if (released != 0) return released;
         
         _appHost.Dispose();
+        _cts?.Dispose();
         return 0;
     }
 
@@ -250,7 +251,7 @@ public static class GetterManager // Max X/Y = 0 + 7999; Max P = 2047 + 0
         return false;
     }
 
-   public static bool SaveResult()
+    public static bool SaveResult()
     {
         if (!SaveImage()) return false;
         StopProcessing();
