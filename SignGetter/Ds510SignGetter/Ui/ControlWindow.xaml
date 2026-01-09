@@ -1,0 +1,90 @@
+﻿<Window x:Class="Ds510SignGetter.Ui.ControlWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:Ds510SignGetter.Ui"
+        mc:Ignorable="d"
+        Title="Ds510 Control Window" Height="720" Width="1200"
+        WindowStyle="None"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    
+    <!-- <Window.DataContext> -->
+    <!--     <local:ControlWindowViewModel></local:ControlWindowViewModel> -->
+    <!-- </Window.DataContext> -->
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Border Background="#f2f2f2" Padding="15 10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Padding="6 0" VerticalAlignment="Top">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                        </Grid.RowDefinitions>
+                        <Border Padding="0 0 0 3" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding ChooseLanguageLabel}" FontFamily="Arial" FontSize="10"></TextBlock>
+                        </Border>
+                        <ComboBox Grid.Row="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LanguagesLabel}" SelectedIndex="{Binding SelectedLanguageIndex}"></ComboBox>
+                    </Grid>
+                </Border>
+                <Border Grid.Column="1" Padding="6 0" VerticalAlignment="Top">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"></RowDefinition>
+                            <RowDefinition Height="*"></RowDefinition>
+                        </Grid.RowDefinitions>
+                        <Border Padding="0 0 0 3" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding TabletSettingsLabel}" FontFamily="Arial" FontSize="10"></TextBlock>
+                        </Border>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Border Padding="3 0">
+                                <Button Content="{Binding TurnScreenOnLabel}" Padding="4" MinWidth="50" Command="{Binding TurnScreenOnCommand}"></Button>
+                            </Border>
+                            <Border Padding="3 0">
+                                <Button Content="{Binding TurnScreenOffLabel}" Padding="4" MinWidth="50" Command="{Binding TurnScreenOffCommand}"></Button>
+                            </Border>
+                            <Border Padding="3 0">
+                                <Button Content="{Binding RebootLabel}" Padding="4" MinWidth="50" Command="{Binding RebootCommand}"></Button>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Border Grid.Column="2" Padding="6 0" HorizontalAlignment="Right">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"></RowDefinition>
+                            <RowDefinition Height="Auto"></RowDefinition>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                            <Border Grid.ColumnSpan="2" Padding="2">
+                                <Button Padding="4" Background="#d4f8d4" Content="{Binding AcceptBtnLabel}" Command="{Binding SubmitCommand}" IsEnabled="{Binding AcceptBtnIsEnabled}"></Button>
+                            </Border>
+                            <Border Grid.Row="1" Grid.Column="0" Padding="2" MinWidth="100">
+                                <Button Padding="4" Background="#ffffed" Content="{Binding ReSignLabel}" Command="{Binding ReSingCommand}"></Button>
+                            </Border>
+                            <Border Grid.Row="1" Grid.Column="1" Padding="2">
+                                <Button Background="#FFD6D7" Padding="4" Content="{Binding CancelLabel}" Command="{Binding CancelCommand}"></Button>
+                            </Border>
+                        </Grid>
+                </Border>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="1" Background="White" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+            <Image x:Name="SignImage" Stretch="Uniform" Visibility="Collapsed"></Image>
+        </Grid>
+    </Grid>
+</Window>
