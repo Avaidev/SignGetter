@@ -160,7 +160,7 @@ public static class GetterManager
                 return false;
             }
             var cropped = CropSign(rtb);
-            CopyToMemory(cropped);
+            CopyToMemory(new WriteableBitmap(cropped));
             return true;
         }
         catch (OutOfMemoryException ex)
@@ -200,9 +200,9 @@ public static class GetterManager
         return new CroppedBitmap(src, rect);
     }
 
-    private static void CopyToMemory(BitmapSource src)
+    private static void CopyToMemory(WriteableBitmap src)
     {
-        var stride = (src.PixelWidth * src.Format.BitsPerPixel + 7) / 8;
+        var stride = src.PixelWidth * (src.Format.BitsPerPixel / 8);
         var size = stride * src.PixelHeight;
         
         var ptr = Marshal.AllocHGlobal(size);
