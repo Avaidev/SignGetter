@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace TabletSignGetterLib.Ui;
 
@@ -11,6 +12,16 @@ public class InkCanvasHost : FrameworkElement
     public InkCanvasHost()
     {
         visuals = new VisualCollection(this);
+    }
+
+    private void DrawBackground()
+    {
+        var back = new DrawingVisual();
+        using (var dc = back.RenderOpen())
+        {
+            dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, ActualWidth, ActualHeight));
+        }
+        visuals.Add(back);
     }
 
     public void DrawPoint(double x, double y)
@@ -48,6 +59,7 @@ public class InkCanvasHost : FrameworkElement
     {
         ResetLastPoint();
         visuals.Clear();
+        DrawBackground();
     }
     
     public bool IsEmpty() => visuals.Count == 0;

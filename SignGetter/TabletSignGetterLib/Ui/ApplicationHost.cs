@@ -46,7 +46,7 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
         if (_canvas == null) return null;
         var w = (int)_canvas.ActualWidth;
         var h = (int)_canvas.ActualHeight;
-
+        
         var rtb = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(_canvas);
         return rtb;
@@ -82,6 +82,7 @@ public class ApplicationHost(HwndSourceHook hook) : IDisposable
         
             _uiThread.SetApartmentState(ApartmentState.STA);
             _uiThread.Start();
+            ClearCanvas();
         }
     }
 

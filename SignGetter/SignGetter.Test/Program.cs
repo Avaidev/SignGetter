@@ -42,10 +42,10 @@ public static class Program
             
             byte[] buffer = new byte[size];
             Marshal.Copy(arrayPtr, buffer, 0, size);
-            foreach (var b in buffer)
-            {
-                Console.Write(b);
-            }
+            // foreach (var b in buffer)
+            // {
+            //     Console.Write(b);
+            // }
 
             
             Application.Current.Dispatcher.Invoke(() =>

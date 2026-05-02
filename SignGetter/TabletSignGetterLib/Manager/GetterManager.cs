@@ -1,6 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using TabletSignGetterLib.Exceptions;
 using TabletSignGetterLib.Models;
@@ -200,18 +201,45 @@ public static class GetterManager
         return new CroppedBitmap(src, rect);
     }
 
-    private static void CopyToMemory(WriteableBitmap src)
+    private static void CopyToMemory(BitmapSource src)
     {
-        var stride = src.PixelWidth * (src.Format.BitsPerPixel / 8);
-        var size = stride * src.PixelHeight;
+        // var converted = new FormatConvertedBitmap(src, PixelFormats.Bgr32, null, 0);
+        //
+        // int width = converted.PixelWidth;
+        // int height = converted.PixelHeight;
+        //
+        // int stride = width * 4; 
+        // int size = stride * height;
+        //
+        // IntPtr ptr = Marshal.AllocHGlobal(size);
+        //
+        // converted.CopyPixels(Int32Rect.Empty, ptr, size, stride);
+        //
+        // _result.ResultPointer = ptr;
+        // _result.ResultSize = size;
+        // _result.ImageHeight = height;
+        // _result.ImageWidth = width;
+        // _result.ImageStride = stride;
         
-        var ptr = Marshal.AllocHGlobal(size);
-        src.CopyPixels(Int32Rect.Empty, ptr, size, stride);
-        
+        var converted = new FormatConvertedBitmap(src, PixelFormats.Bgr24, null, 0);
+
+        int width = converted.PixelWidth;
+        int height = converted.PixelHeight;
+
+        // 2. BMP-Compatible Stride (Multiple of 4)
+        // For 24bpp: (Width * 3 bytes + 3) & ~3
+        int stride = (width * 3 + 3) & ~3; 
+        int size = stride * height;
+
+        IntPtr ptr = Marshal.AllocHGlobal(size);
+
+        // 3. IMPORTANT: Use the stride we just calculated
+        converted.CopyPixels(Int32Rect.Empty, ptr, size, stride);
+
         _result.ResultPointer = ptr;
         _result.ResultSize = size;
-        _result.ImageHeight = src.PixelHeight;
-        _result.ImageWidth = src.PixelWidth;
+        _result.ImageHeight = height;
+        _result.ImageWidth = width;
         _result.ImageStride = stride;
     }
     #endregion
