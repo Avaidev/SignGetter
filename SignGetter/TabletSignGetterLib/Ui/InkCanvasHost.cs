@@ -62,5 +62,5 @@ public class InkCanvasHost : FrameworkElement
         DrawBackground();
     }
     
-    public bool IsEmpty() => visuals.Count == 0;
+    public bool CheckEmpty() => visuals.Count == 0;
 }

@@ -6,9 +6,9 @@ using TabletSignGetterLib.Exceptions;
 using TabletSignGetterLib.Models;
 using TabletSignGetterLib.Utilities;
 
-namespace TabletSignGetterLib.Manager;
+namespace TabletSignGetterLib.Services;
 
-public static class TabletManager
+public static class TabletService
 {
     private static List<TabletDevice> GetDevices()
     {
@@ -17,25 +17,19 @@ public static class TabletManager
             .ToList();
     }
     
-    public static int SelectTablet(out TabletDevice? selectedTablet)
+    public static TabletDevice SelectTablet()
     {
-        selectedTablet = null;
-        var tablets1 = GetDevices();
+        var tablets = GetDevices();
+
+        if (tablets.Count == 0)
+            throw new TabletNotConnectedException();
         
-        if (tablets1.Count == 0)
-        {
-            return (int)StatusCodes.TabletListIsEmpty;
-        }
-        
-        if (tablets1.Count == 1)
-        {
-            selectedTablet = tablets1.First();
-            return (int)StatusCodes.AutoSelected;
-        }
+        if (tablets.Count == 1)
+            return tablets.First();
         
         var sb = new StringBuilder();
         var i = 1;
-        foreach (var tablet in tablets1)
+        foreach (var tablet in tablets)
         {
             sb.Append($"[{i++}] ");
             sb.Append(tablet);
@@ -44,25 +38,21 @@ public static class TabletManager
 
         sb.Append("Enter the device number:");
         var input = Interaction.InputBox(sb.ToString(), "Select Device", "1");
-        if (string.IsNullOrEmpty(input) || string.IsNullOrWhiteSpace(input)) return (int)StatusCodes.InvalidInput;
-        
+        if (string.IsNullOrWhiteSpace(input)) 
+            throw new InvalidInputException("Enter the number");
+
         try
         {
             var index = Convert.ToInt32(input);
-            if (index < 1 || index > tablets1.Count) return (int)StatusCodes.InvalidInput;
-            var selected = tablets1[index - 1];
-            if (IsTabletExists(selected))
-            {
-                selectedTablet = selected;
-                return (int)StatusCodes.Success;
-            }
+            if (index < 1 || index > tablets.Count)
+                throw new InvalidInputException($"The number is not in range (1, {tablets.Count})");
 
-            return (int)StatusCodes.TabletNotFound;
+            var selected = tablets[index - 1];
+            return IsTabletExists(selected) ? selected : throw new TabletNotFoundException("Lost the tablet");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is FormatException or OverflowException)
         {
-            Console.WriteLine("[TabletManager] Exception in selecting tablet input: {0}]", ex.Message);
-            return (int)StatusCodes.TabletSelectionOtherException;
+            throw new InvalidInputException("Invalid format of type");
         }
     }
     
@@ -79,8 +69,7 @@ public static class TabletManager
 
             string[] internalKeywords =
             {
-                "HIDI2C", "TouchPad", "Touchpad", "Synaptics", "ELAN",
-                "Precision Touchpad", "Touchscreen", "TrackPad", "Trackpad",
+                "HIDI2C", "TouchPad", "Synaptics", "ELAN", "Touchscreen", "TrackPad",
                 "I2C", "HID Compliant Mouse", "PS/2", "USB Input Device"
             };
 
@@ -102,27 +91,35 @@ public static class TabletManager
 
     public static bool RegisterTablet(IntPtr hwndTarget)
     {
-        var rid = new Rih.RAWINPUTDEVICE
-        {
-            usUsagePage = Rih.HID_USAGE_PAGE_GENERIC,
-            usUsage = Rih.HID_USAGE_PEN,
-            dwFlags = Rih.RIDEV_INPUTSINK,
-            hwndTarget = hwndTarget
-        };
+        Rih.RAWINPUTDEVICE[] rid = new Rih.RAWINPUTDEVICE[2];
 
-        return Rih.RegisterRawInputDevices([rid], 1, (uint)Marshal.SizeOf(typeof(Rih.RAWINPUTDEVICE)));
+        rid[0].usUsagePage = Rih.HID_USAGE_PAGE_GENERIC;
+        rid[0].usUsage = Rih.HID_USAGE_MOUSE;
+        rid[0].dwFlags = Rih.RIDEV_INPUTSINK;
+        rid[0].hwndTarget = hwndTarget;
+
+        rid[1].usUsagePage = Rih.HID_USAGE_PAGE_DIGITIZER;
+        rid[1].usUsage = Rih.HID_USAGE_PEN;
+        rid[1].dwFlags = Rih.RIDEV_INPUTSINK;
+        rid[1].hwndTarget = hwndTarget;
+
+        return Rih.RegisterRawInputDevices(rid, (uint)rid.Length, (uint)Marshal.SizeOf(typeof(Rih.RAWINPUTDEVICE)));
     }
     
     public static void UnregisterTablet()
     {
-        var rid = new Rih.RAWINPUTDEVICE
-        {
-            usUsagePage = Rih.HID_USAGE_PAGE_GENERIC,
-            usUsage = Rih.HID_USAGE_PEN,
-            dwFlags = Rih.RIDEV_REMOVE,
-            hwndTarget = IntPtr.Zero
-        };
+        Rih.RAWINPUTDEVICE[] rid = new Rih.RAWINPUTDEVICE[2];
 
-        Rih.RegisterRawInputDevices([rid], 1, (uint)Marshal.SizeOf(typeof(Rih.RAWINPUTDEVICE)));
+        rid[0].usUsagePage = Rih.HID_USAGE_PAGE_GENERIC;
+        rid[0].usUsage = Rih.HID_USAGE_MOUSE;
+        rid[0].dwFlags = Rih.RIDEV_REMOVE;
+        rid[0].hwndTarget = IntPtr.Zero;
+
+        rid[1].usUsagePage = Rih.HID_USAGE_PAGE_DIGITIZER;
+        rid[1].usUsage = Rih.HID_USAGE_PEN;
+        rid[1].dwFlags = Rih.RIDEV_REMOVE;
+        rid[1].hwndTarget = IntPtr.Zero;
+
+        Rih.RegisterRawInputDevices(rid, (uint)rid.Length, (uint)Marshal.SizeOf(typeof(Rih.RAWINPUTDEVICE)));
     }
 }

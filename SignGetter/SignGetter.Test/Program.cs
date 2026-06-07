@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using TabletSignGetterLib.Manager;
+using TabletSignGetterLib;
 
 namespace SignGetter.Test;
 
@@ -13,17 +13,15 @@ public static class Program
     {
         try
         {
-            // var uiThread = new Thread(() =>
-            // {
-            //     var app = new Application();
-            //     app.Run();
-            // });
-            // uiThread.SetApartmentState(ApartmentState.STA);
-            // uiThread.Start();
-            // await Task.Delay(1000);
-            // Console.WriteLine(GetterManager.SelectTablet());
+            var uiThread = new Thread(() =>
+            {
+                var app = new Application();
+                app.Run();
+            });
+            uiThread.SetApartmentState(ApartmentState.STA);
+            uiThread.Start();
+            await Task.Delay(1000);
 
-            // return;
             
             IntPtr arrayPtr;
             int size;
@@ -38,7 +36,7 @@ public static class Program
             Console.WriteLine($"Height: {height}");
             await Task.Delay(1000);
             
-            if (result != 0) return;
+            if (result > 0) return;
             
             byte[] buffer = new byte[size];
             Marshal.Copy(arrayPtr, buffer, 0, size);

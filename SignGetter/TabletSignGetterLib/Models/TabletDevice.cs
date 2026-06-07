@@ -1,100 +1,83 @@
 ﻿using HidSharp;
 
-namespace TabletSignGetterLib.Models;
-
-public class TabletDevice
+namespace TabletSignGetterLib.Models
 {
-    public string DeviceName { get; private set; }
-    public string Manufacturer { get; private set; }
-    public readonly int VendorId;
-    public readonly int ProductId;
-    
-    private int _logicalMaxX;
-    private int _logicalMaxY;
-
-    public TabletDevice(HidDevice device)
+    public class TabletDevice
     {
-        DeviceName = device.GetProductName();
-        Manufacturer = device.GetManufacturer();
-        VendorId = device.VendorID;
-        ProductId = device.ProductID;
-        DetermineMax(device.GetRawReportDescriptor());
-    }
-    
-    private void DetermineMax(byte[] descriptor)
-    {
-        var sizeX = GetReportSize(descriptor, 0x30);
-        var sizeY = GetReportSize(descriptor, 0x31);
+        public string DeviceName { get; private set; }
+        public string Manufacturer { get; private set; }
+        public readonly int VendorId;
+        public readonly int ProductId;
 
-        _logicalMaxX = sizeX switch
+        public float ScaleX { get; private set; }
+        public float ScaleY { get; private set; }
+        public float ScalePressure { get; private set; }
+
+        private int _maxX;
+        private int _maxY;
+        private int _maxPressure;
+
+        public TabletDevice(HidDevice device)
         {
-            16 => 65535,
-            15 => 32767,
-            _ => 16000
-        };
-        _logicalMaxY = sizeY switch
-        {
-            16 => 65535,
-            15 => 32767,
-            _ => 16000
-        };
-    }
-    private static int? GetReportSize(byte[] desc, int usageId)
-    {
-        int? reportSize = null;
-        List<ushort> usages = new();
+            DeviceName = device.GetProductName();
+            Manufacturer = device.GetManufacturer();
+            VendorId = device.VendorID;
+            ProductId = device.ProductID;
 
-        int i = 0;
-        while (i < desc.Length)
-        {
-            byte prefix = desc[i++];
-            if (prefix == 0xFE) { i += 2 + desc[i]; continue; }
-
-            int sizeCode = prefix & 0x03;
-            int dataSize = sizeCode == 0 ? 0 : (sizeCode == 1 ? 1 : (sizeCode == 2 ? 2 : 4));
-            int type = (prefix >> 2) & 0x03;
-            int tag = (prefix >> 4) & 0x0F;
-
-            uint raw = 0;
-            for (int k = 0; k < dataSize && i < desc.Length; k++)
-                raw |= (uint)desc[i++] << (8 * k);
-
-            if (type == 1 && tag == 0x7) // Report Size
-            {
-                reportSize = (int)raw;
-            }
-            else if (type == 2 && tag == 0x0) // Usage
-            {
-                usages.Add((ushort)raw);
-            }
-            else if (type == 0 && tag == 0x8) // Input
-            {
-                foreach (var u in usages)
-                {
-                    if (u == usageId) return reportSize;
-                }
-                usages.Clear();
-            }
+            ParseHidDescriptor(device.GetRawReportDescriptor());
+            
+            ScaleX = _maxX > 0 ? 1.0f / _maxX : 1.0f;
+            ScaleY = _maxY > 0 ? 1.0f / _maxY : 1.0f;
+            ScalePressure = _maxPressure > 0 ? 1.0f / _maxPressure : 1.0f;
         }
-        return null;
-    }
 
-    public int GetMaxX() => _logicalMaxX;
-    public int GetMaxY() => _logicalMaxY;
-    
-    public override string ToString()
-    {
-        return $"{Manufacturer} - '{DeviceName}' (VID: {VendorId}, PID: {ProductId})";
-    }
+        private void ParseHidDescriptor(byte[] desc)
+        {
+            _maxX = GetLogicalMax(desc, 0x01, 0x30) ?? 32767;
+            _maxY = GetLogicalMax(desc, 0x01, 0x31) ?? 32767;
+            _maxPressure = GetLogicalMax(desc, 0x0D, 0x30) ?? 8191;
+        }
 
-    public override int GetHashCode()
-    {
-        return VendorId.GetHashCode() ^ ProductId.GetHashCode();
-    }
-    
-    public override bool Equals(object? obj)
-    {
-        var other = obj as TabletDevice;
-        return other != null && other.VendorId == VendorId && other.ProductId == ProductId;
+        private static int? GetLogicalMax(byte[] desc, int usagePage, int usageId)
+        {
+            int currentUsagePage = 0;
+            int lastLogicalMax = 0;
+            List<int> currentUsages = new List<int>();
+
+            int i = 0;
+            while (i < desc.Length)
+            {
+                byte prefix = desc[i++];
+                int sizeCode = prefix & 0x03;
+                int dataSize = sizeCode == 3 ? 4 : sizeCode;
+                int type = (prefix >> 2) & 0x03;
+                int tag = (prefix >> 4) & 0x0F;
+
+                uint raw = 0;
+                for (int k = 0; k < dataSize && i < desc.Length; k++)
+                    raw |= (uint)desc[i++] << (8 * k);
+
+                if (type == 1) // Global Item
+                {
+                    if (tag == 0x0) currentUsagePage = (int)raw; // Usage Page
+                    if (tag == 0x2) lastLogicalMax = (int)raw;   // Logical Maximum
+                }
+                else if (type == 2) // Local Item
+                {
+                    if (tag == 0x0) currentUsages.Add((int)raw); // Usage
+                }
+                else if (type == 0 && tag == 0x8) // Input Main Item
+                {
+                    if (currentUsagePage == usagePage && currentUsages.Contains(usageId))
+                        return lastLogicalMax;
+                    currentUsages.Clear();
+                }
+            }
+            return null;
+        }
+
+        public int GetMaxX() => _maxX;
+        public int GetMaxY() => _maxY;
+        public int GetMaxPressure() => _maxPressure;
     }
 }

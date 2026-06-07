@@ -1,0 +1,111 @@
+﻿<Window x:Class="TabletSignGetterLib.Ui.CanvasWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        mc:Ignorable="d"
+        Title="SignGetter"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="#01FFFFFF"
+        Topmost="True"
+        WindowState="Maximized">
+
+    <Window.Resources>
+        <DropShadowEffect x:Key="DropShadow" BlurRadius="15" Opacity="0.4" ShadowDepth="5" Color="Black"/>
+        
+        <!-- Keycap Style -->
+        <Style x:Key="KeyCapStyle" TargetType="Border">
+            <Setter Property="Background" Value="#E0E0E0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="BorderBrush" Value="#BBBBBB"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="InstructionTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#444444"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="20*" />
+            <ColumnDefinition Width="60*" />
+            <ColumnDefinition Width="20*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="20*" />
+            <RowDefinition Height="60*" />
+            <RowDefinition Height="20*" />
+        </Grid.RowDefinitions>
+
+        <Viewbox Grid.Row="1" Grid.Column="1" Stretch="Uniform">
+            <Grid Width="800" Height="700" Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- Header Row -->
+                    <RowDefinition Height="*"/>    <!-- Canvas Row -->
+                </Grid.RowDefinitions>
+
+                <!-- 1. Instruction Pill Background -->
+                <Border Grid.Row="0" 
+                        Background="#F2F2F2" 
+                        BorderBrush="#DDDDDD"
+                        BorderThickness="1"
+                        CornerRadius="30"
+                        Padding="30,12"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,25"
+                        Effect="{StaticResource DropShadow}">
+                    
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Escape Item -->
+                        <StackPanel Orientation="Horizontal" Margin="15,0">
+                            <Border Style="{StaticResource KeyCapStyle}">
+                                <TextBlock Text="Esc" FontWeight="Bold" FontSize="12"/>
+                            </Border>
+                            <Path Data="M0,0 L10,10 M10,0 L0,10" Stroke="Red" StrokeThickness="3" Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <TextBlock Text="Exit" Style="{StaticResource InstructionTextStyle}"/>
+                        </StackPanel>
+
+                        <!-- Divider -->
+                        <Rectangle Width="1" Fill="#CCCCCC" Margin="10,2" VerticalAlignment="Stretch"/>
+
+                        <!-- Ctrl+Z Item -->
+                        <StackPanel Orientation="Horizontal" Margin="15,0">
+                            <Border Style="{StaticResource KeyCapStyle}">
+                                <TextBlock Text="Ctrl + Z" FontWeight="Bold" FontSize="12"/>
+                            </Border>
+                            <Path Data="M2,5 A3,3 0 1 1 5,8 L5,6 M5,8 L3,8" Stroke="#222222" StrokeThickness="2.2" Width="12" Height="12" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Reset" Style="{StaticResource InstructionTextStyle}"/>
+                        </StackPanel>
+
+                        <!-- Divider -->
+                        <Rectangle Width="1" Fill="#CCCCCC" Margin="10,2" VerticalAlignment="Stretch"/>
+
+                        <!-- Enter Item -->
+                        <StackPanel Orientation="Horizontal" Margin="15,0">
+                            <Border Style="{StaticResource KeyCapStyle}">
+                                <TextBlock Text="Enter" FontWeight="Bold" FontSize="12"/>
+                            </Border>
+                            <Path Data="M1,5 L4,8 L11,1" Stroke="Green" StrokeThickness="3" Width="13" Height="10" Margin="0,0,8,0" VerticalAlignment="Center" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <TextBlock Text="Submit" Style="{StaticResource InstructionTextStyle}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 2. The Canvas Border -->
+                <Border Grid.Row="1" Background="White" CornerRadius="12" Effect="{StaticResource DropShadow}">
+                    <Border x:Name="InkCanvasContainer" Padding="10">
+                        <!-- Canvas content injected here -->
+                    </Border>
+                </Border>
+            </Grid>
+        </Viewbox>
+    </Grid>
+</Window>

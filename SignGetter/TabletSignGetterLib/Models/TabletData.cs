@@ -1,13 +1,24 @@
 ﻿namespace TabletSignGetterLib.Models;
 
-public struct TabletData
+public struct TabletDataRaw()
 {
-    public float X;
-    public float Y;
-    public bool TipPressed;
-    public bool TipUnPressed;
-    public bool Button1Pressed;
-    public bool Button1UnPressed;
-    public bool Button2Pressed;
-    public bool Button2UnPressed;
+    public float X = 0f;
+    public float Y = 0f;
+    public float Pressure = 0f;
+    public bool TipPressed = false;
+    public bool TipUnPressed = false;
+    public bool Button1Pressed = false;
+    public bool Button1UnPressed = false;
+    public bool Button2Pressed = false;
+    public bool Button2UnPressed = false;
+}
+
+public struct TabletData()
+{
+    public float X = 0f;
+    public float Y = 0f;
+    public float Pressure = 0f;
+    public bool Tip = false;
+    public bool Button1 = false;
+    public bool Button2 = false;
 }

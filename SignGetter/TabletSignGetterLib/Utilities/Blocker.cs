@@ -1,9 +1,8 @@
-﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
-namespace TabletLib.Utilities;
+namespace TabletSignGetterLib.Utilities;
 
-static class Blocker
+public static class Blocker
 {
     delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
     
@@ -44,6 +43,7 @@ static class Blocker
         await Task.Delay(TimeSpan.FromSeconds(seconds));
         EnableWinKey();
     }
+    
     public static void EnableWinKey()
     {
         if (_hook != IntPtr.Zero)
@@ -54,9 +54,6 @@ static class Blocker
     }
     
     #region Dll Imports
-    [DllImport("user32.dll")] 
-    public static extern int ShowCursor(bool bShow);
-    
     [DllImport("user32.dll")] 
     static extern IntPtr SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, uint dwThreadId);
 
