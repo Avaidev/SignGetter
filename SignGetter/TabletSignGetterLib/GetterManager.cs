@@ -54,7 +54,7 @@ public static class GetterManager
         try
         {
             if (!CheckCanBeExecuted())
-                throw new BaseException("There is another process is currently in progress.", StatusCodes.IsExecuting);
+                throw new BaseException("There is another process is currently in progress", StatusCodes.IsExecuting);
 
             var tablet = SignalService.GetTablet();
             if (tablet == null || !TabletService.IsTabletExists(tablet))

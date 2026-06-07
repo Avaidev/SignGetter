@@ -137,7 +137,7 @@ public class SignalService
     private TabletDataRaw ParseMouseData(Rih.RAWMOUSE mouse)
     {
         if (_currentTablet == null)
-            throw new TabletNotSelectedException();
+            throw new TabletNotSelectedException("No tablet selected");
         
         var data = new TabletDataRaw(); 
 
@@ -160,7 +160,7 @@ public class SignalService
 
     private TabletData ParseHidData(IntPtr hDevice, byte[] data)
     {
-        if (_currentTablet == null) throw new TabletNotSelectedException();
+        if (_currentTablet == null) throw new TabletNotSelectedException("No tablet selected");
         
         var pPreparsedData = GetPreparsedData(hDevice);
         if (pPreparsedData == IntPtr.Zero) return default;

@@ -1,10 +1,16 @@
 #pragma once
 
+#ifdef TABLETSIGNGETTER_BRIDGE_EXPORTS
+    #define BRIDGE_API __declspec(dllexport)
+#else
+    #define BRIDGE_API __declspec(dllimport)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    __declspec(dllimport) int SignGetter_GetSign(
+    BRIDGE_API int SignGetter_GetSign(
         void** returnArrayPointer,
         int* returnArraySize,
         int* returnImageWidth,
@@ -12,19 +18,17 @@ extern "C" {
         int* returnImageStride
     );
 
-    _declspec(dllimport) bool SignGetter_SelectTablet();
+    BRIDGE_API bool SignGetter_CanBeExecuted();
 
-    _declspec(dllimport) int SignGetter_GetStatusCode();
+    BRIDGE_API void SignGetter_ReleaseOneMemory();
 
-    __declspec(dllimport) bool SignGetter_CanBeExecuted();
+    BRIDGE_API void SignGetter_ReleaseMemory();
 
-    __declspec(dllimport) void SignGetter_ReleaseOneMemory();
+    BRIDGE_API void SignGetter_ShutGetter();
 
-    __declspec(dllimport) void SignGetter_ReleaseMemory();
+    BRIDGE_API int SignGetter_GetCropPadding();
 
-    _declspec(dllimport) void SignGetter_RestartGetter();
-
-    __declspec(dllimport) void SignGetter_ShutGetter();
+    __declspec(dllimport) void SignGetter_SetCropPadding(int padding);
 
 #ifdef __cplusplus
 }

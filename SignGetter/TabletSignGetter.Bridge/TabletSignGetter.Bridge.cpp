@@ -1,27 +1,28 @@
 #include "pch.h"
 #include "TabletSignGetter.Bridge.h"
+
 using namespace System;
-using namespace TabletSignGetterLib::Manager;
+using namespace TabletSignGetterLib;
 
 
 public ref class SignGetterBridge
 {
 public:
-	static bool CanBeExecutedWrapper() {
-		return GetterManager::CanBeExecuted;
+	static bool CheckCanBeExecutedWrapper() {
+		return GetterManager::CheckCanBeExecuted();
 	}
 
-	static int GetStatusCodeWrapper() {
-		return GetterManager::GetStatusCode();
+	static int GetCropPaddingWrapper() {
+		return GetterManager::GetCropPadding();
+	}
+
+	static void SetCropPaddingWrapper(int padding) {
+		GetterManager::SetCropPadding(padding);
 	}
 
 	static int GetSignWrapper(IntPtr% returnArrayPointer, int% returnArraySize,
 		int% returnImageWidth, int% returnImageHeight, int% returnImageStride) {
 		return GetterManager::GetSign(returnArrayPointer, returnArraySize, returnImageWidth, returnImageHeight, returnImageStride);
-	}
-
-	static bool SelectTabletWrapper() {
-		return GetterManager::SelectTablet();
 	}
 
 	static void ReleaseOneMemoryWrapper() {
@@ -32,17 +33,13 @@ public:
 		GetterManager::ReleaseMemory();
 	}
 
-	static void RestartGetterWrapper() {
-		GetterManager::RestartGetter();
-	}
-
 	static void ShutGetterWrapper() {
 		GetterManager::ShutGetter();
 	}
 };
 
 extern "C" {
-	_declspec(dllexport) int SignGetter_GetSign(
+	BRIDGE_API int SignGetter_GetSign(
 		void** returnArrayPointer,
 		int* returnArraySize,
 		int* returnImageWidth,
@@ -70,35 +67,31 @@ extern "C" {
 			*returnImageWidth = 0;
 			*returnImageHeight = 0;
 			*returnImageStride = 0;
-			return -1;
+			return 0x2;
 		}
 	}
 
-	_declspec(dllexport) bool SignGetter_SelectTablet() {
-		return SignGetterBridge::SelectTabletWrapper();
+	BRIDGE_API bool SignGetter_CanBeExecuted() {
+		return SignGetterBridge::CheckCanBeExecutedWrapper();
 	}
 
-	_declspec(dllexport) bool SignGetter_CanBeExecuted() {
-		return SignGetterBridge::CanBeExecutedWrapper();
-	}
-
-	_declspec(dllexport) int SignGetter_GetStatusCode() {
-		return SignGetterBridge::GetStatusCodeWrapper();
-	}
-
-	_declspec(dllexport) void SignGetter_ReleaseOneMemory() {
+	BRIDGE_API void SignGetter_ReleaseOneMemory() {
 		SignGetterBridge::ReleaseOneMemoryWrapper();
 	}
 
-	_declspec(dllexport) void SignGetter_ReleaseMemory() {
+	BRIDGE_API void SignGetter_ReleaseMemory() {
 		SignGetterBridge::ReleaseMemoryWrapper();
 	}
 
-	_declspec(dllexport) void SignGetter_RestartGetter() {
-		SignGetterBridge::RestartGetterWrapper();
+	BRIDGE_API int SignGetter_GetCropPadding() {
+		return SignGetterBridge::GetCropPaddingWrapper();
 	}
 
-	_declspec(dllexport) void SignGetter_ShutGetter() {
+	BRIDGE_API void SignGetter_SetCropPadding(int padding) {
+		SignGetterBridge::SetCropPaddingWrapper(padding);
+	}
+
+	BRIDGE_API void SignGetter_ShutGetter() {
 		SignGetterBridge::ShutGetterWrapper();
 	}
 }

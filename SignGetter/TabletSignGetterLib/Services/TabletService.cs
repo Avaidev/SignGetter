@@ -22,7 +22,7 @@ public static class TabletService
         var tablets = GetDevices();
 
         if (tablets.Count == 0)
-            throw new TabletNotConnectedException();
+            throw new TabletNotConnectedException("No tablets connected");
         
         if (tablets.Count == 1)
             return tablets.First();

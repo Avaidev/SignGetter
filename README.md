@@ -1,14 +1,14 @@
 # Signature Capture library (Windows)
 
-A C# library for capturing handwritten signatures using design tablets that lack proper drivers. Windows often recognize such tablets as mouse devices - this library interprets those events to record pen strokes.
+A special library for capturing handwritten signatures using design tablets.
 
 ## ✨ Features
 
-- Capture signatures from tablets recognized as HID mouse devices
+- Supports HID and noHID devices
 - No vendor drivers or SDKs required
 - Provides rasterized image output as byte array for later customizing
 - Exposes a C API surface via a C++/CLI bridge
-- Ready-to-use in C-based prjects
+- Ready-to-use in C-based projects
 - Explicit resource management and robust error handling
 
 ## ⚙️ Requirements
@@ -45,19 +45,19 @@ Returns the Status Code of the function execution result
 - `returnImageHeight` - the height of the result image;
 - `returnImageStride` - the stride of the result image (for later processing);
 
-#### 2. SelectTablet
-The function for selecting tablet from available list.
+#### 2. SetCropPadding
+The function that allows to set custom crop padding
 ```c++
-bool SignGetter_SelectTablet();
+void SignGetter_SetCropPadding(int padding);
 ```
-Returns `true` if the tablet was selected, otherwise `false`;
+- `padding` - the new padding value in pixels;
 
-#### 3. GetStatusCode
-The function for getting current Status Code.
+#### 3. GetCropPadding
+The function for getting current crop padding.
 ```c++
-int SignGetter_GetStatusCode();
+int SignGetter_GetCropPadding();
 ```
-Returns the current Status Code of SignGetter;
+Returns the current crop padding value;
 
 #### 4. CanBeExecuted
 The function for checking whether the GetSign can be executed.
@@ -78,13 +78,7 @@ The function to release all blocks of memory.
 void SignGetter_ReleaseMemory();
 ```
 
-#### 5. RestartGetter
-The function to recreate window and reregister the tablet.
-```c++
-void SignGetter_RestartGetter();
-```
-
-#### 6. ShutGetter
+#### 5. ShutGetter
 The function to fully shut the SignGetter app.
 ```c++
 void SignGetter_ShutGetter();
@@ -99,27 +93,20 @@ Press `Ctrl + Z` to reset canvas -> \
 Do smth you want with result.
 
 ## ❗Status Codes
-- `0` - Success;
-- `-1` - Other Exception;
+* `0` - Success;
+* `1` - Manual Interruption;
+* `2` - Other Exception;
 
-* `1 | 0x0001` - Tablets list is Empty;
-* `2 | 0x0002` - Tablet not found;
-* `4 | 0x0004` - Exception during selection;
+- `3` - Tablets list is Empty;
+- `4` - Selected tablet not found;
+- `5` - Tablet is not selected;
+- `6` - Tablet registration failed;
+- `7` - Window Creation timed out;
+- `8` - Window is not found;
+- `9` - Canvas is Empty;
 
-- `8 | 0x0008` - Invalid input;
-- `16 | 0x0010` - Automatically Selected;
-- `32 | 0x0020` - Window Creation timed out;
-
-* `64 | 0x0040` - Exception during saving;
-* `128 | 0x0080` - Canvas is Null;
-* `256 | 0x0100` - Canvas is Empty;
-* `512 | 0x0200` - Cant allocate the memory (Out of Memory);
-
-- `1024 | 0x0400` - SignGetter cant be executed at this time;
-- `2048 | 0x0800` - SignGetter tablet registration failed;
-- `4096 | 0x1000` - Exception during drawing;
-- `8192 | 0x2000` - Exception in reading input data;
-- `16384 | 0x4000` - The canvas window is null;
+* `10` - Invalid user input;
+* `11` - Some process is currently executing;
 
 ## License
 
