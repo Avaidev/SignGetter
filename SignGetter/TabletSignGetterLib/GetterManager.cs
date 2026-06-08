@@ -150,6 +150,13 @@ public static class GetterManager
         else _appHost.ResetCanvasPoint();
     }
 
+    internal static TabletDevice.ModeVariants SetNextTabletMode()
+    {
+        var tablet = SignalService.GetTablet();
+        if (tablet == null) throw new TabletNotSelectedException("Tablet not selected");
+        return tablet.SetNextMode();
+    }
+
     internal static void SaveResult()
     {
         SignalService.Block();

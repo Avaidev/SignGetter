@@ -13,14 +13,14 @@ public static class Program
     {
         try
         {
-            var uiThread = new Thread(() =>
-            {
-                var app = new Application();
-                app.Run();
-            });
-            uiThread.SetApartmentState(ApartmentState.STA);
-            uiThread.Start();
-            await Task.Delay(1000);
+            // var uiThread = new Thread(() =>
+            // {
+            //     var app = new Application();
+            //     app.Run();
+            // });
+            // uiThread.SetApartmentState(ApartmentState.STA);
+            // uiThread.Start();
+            // await Task.Delay(1000);
 
             
             IntPtr arrayPtr;

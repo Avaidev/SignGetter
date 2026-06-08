@@ -59,9 +59,14 @@ public partial class CanvasWindow : Window
     {
         switch (e.Key)
         {
-            case Key.Escape:
+            case Key.Escape when Keyboard.Modifiers == ModifierKeys.None:
                 e.Handled = true;
                 HandleEscape();
+                break;
+            
+            case Key.Escape when Keyboard.Modifiers == ModifierKeys.Shift:
+                e.Handled = true;
+                HandleShiftEscape();
                 break;
             
             case Key.Z when Keyboard.Modifiers == ModifierKeys.Control:
@@ -94,5 +99,11 @@ public partial class CanvasWindow : Window
     private void HandleCtrlZ()
     {
         GetterManager.ReSign();
+    }
+
+    private void HandleShiftEscape()
+    {
+        var newMode = GetterManager.SetNextTabletMode();
+        ModeLabel.Text = newMode.ToString().ToUpperInvariant();
     }
 }

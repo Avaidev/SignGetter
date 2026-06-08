@@ -6,12 +6,12 @@ namespace TabletSignGetterLib.Ui;
 
 public class InkCanvasHost : FrameworkElement
 {
-    private readonly VisualCollection visuals;
-    private Point? lastPoint;
+    private readonly VisualCollection _visuals;
+    private Point? _lastPoint;
 
     public InkCanvasHost()
     {
-        visuals = new VisualCollection(this);
+        _visuals = new VisualCollection(this);
     }
 
     private void DrawBackground()
@@ -21,7 +21,7 @@ public class InkCanvasHost : FrameworkElement
         {
             dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, ActualWidth, ActualHeight));
         }
-        visuals.Add(back);
+        _visuals.Add(back);
     }
 
     public void DrawPoint(double x, double y)
@@ -29,10 +29,10 @@ public class InkCanvasHost : FrameworkElement
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen())
         {
-            if (lastPoint != null)
+            if (_lastPoint != null)
             {
                 dc.DrawLine(new Pen(Brushes.Black, 2),
-                    lastPoint.Value,
+                    _lastPoint.Value,
                     new Point(x, y));
             }
             else
@@ -40,27 +40,27 @@ public class InkCanvasHost : FrameworkElement
                 dc.DrawEllipse(Brushes.Black, null, new Point(x, y), 1, 1);
             }
         }
-        visuals.Add(dv);
-        lastPoint = new Point(x, y);
+        _visuals.Add(dv);
+        _lastPoint = new Point(x, y);
     }
     
-    protected override int VisualChildrenCount => visuals.Count;
+    protected override int VisualChildrenCount => _visuals.Count;
 
     protected override Visual GetVisualChild(int index)
     {
-        if (index < 0 || index >= visuals.Count)
+        if (index < 0 || index >= _visuals.Count)
             throw new ArgumentOutOfRangeException(nameof(index));
-        return visuals[index];
+        return _visuals[index];
     }
     
-    public void ResetLastPoint() => lastPoint = null;
+    public void ResetLastPoint() => _lastPoint = null;
 
     public void ClearAll()
     {
         ResetLastPoint();
-        visuals.Clear();
+        _visuals.Clear();
         DrawBackground();
     }
     
-    public bool CheckEmpty() => visuals.Count == 0;
+    public bool CheckEmpty() => _visuals.Count == 0;
 }
